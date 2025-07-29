@@ -27,12 +27,13 @@
               @keyup.enter="handleSendMessage"
               @keyup="HandleIsShowModel"
               @focus="moreBlockState = false"
+              :disabled="isLoading"
           ></textarea>
         </div>
 
         <!-- 语音输入区域 -->
         <div class="flex-1 flex voice-wrap" v-if="status === 2">
-          <t-button class="voice-button" shape="round">
+          <t-button class="voice-button" shape="round" :disabled="isLoading">
             按住说话
           </t-button>
           <div
@@ -43,6 +44,7 @@
               @mousedown="HandleShowAudit"
               @mouseup="HandleAudioEnd"
               @mousemove="HandleAudioMove"
+              :style="{ pointerEvents: isLoading ? 'none' : 'auto' }"
           ></div>
         </div>
 
@@ -50,7 +52,7 @@
         <div class="more_child">
           <div
               class="add-btn"
-              v-if="status === 1 && !datas.message"
+              v-if="status === 1 && !datas.message && !isLoading"
               @click="onClickAddCircle"
               title="更多选项"
           >
@@ -66,17 +68,20 @@
               v-if="status === 1 && datas.message"
               @click="HandleSendMessage"
               title="发送消息"
+              :class="{ 'loading': isLoading }"
+              :disabled="isLoading"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg v-if="!isLoading" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M22 2L11 13L2 2L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M22 2L15 22L11 13L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
+            <div v-else class="loading-spinner"></div>
           </div>
         </div>
       </div>
 
       <!-- 更多选项区域 -->
-      <div class="more-options" v-if="moreBlockState">
+      <div class="more-options" v-if="moreBlockState && !isLoading">
         <div class="option-item" @click="onClickAddCircle">
           <input type="file" class="upload" @change="getFile" accept="image/*" />
           <div class="icon-wrap">
@@ -115,7 +120,7 @@ import Recorder from 'js-audio-recorder'
 import { useSystemStore } from '@/store/system'
 import { useMenuStore } from '@/store/menu'
 
-// 定义接收的props，包含handleSendMessage方法
+// 定义接收的props
 const props = defineProps({
   handleSendMessage: {
     type: Function,
@@ -136,6 +141,7 @@ const datas = reactive({
   isPC: false,
 })
 const status = ref(1) // 1 文本输入 2 语音输入
+const isLoading = ref(false) // 新增：加载状态
 
 const emits = defineEmits([
   'HandEmitEvent',
@@ -183,28 +189,48 @@ const HandleShowAudit = () => {
   }
 }
 
-const HandleSendMessage = (event) => {
+const handleSendMessage = async (event) => {
   // 支持Enter发送和按钮点击发送
-  console.log(event)
-  if (event.key === 'Enter' || !event.key) {
+  if ((event && event.key === 'Enter') || !event) {
+    // 阻止回车键默认行为（如换行）
+    event?.preventDefault();
+
     if (localStorage.getItem('isAnonymous')) {
       menuStore.HandleShowLogin(true)
       return
     }
 
+    // 加载状态下不执行
+    if (isLoading.value) return;
+
     const dom = document.querySelector('.input_message')
     if (dom) dom.blur()
 
-    if (!datas.message.trim()) return
+    const message = datas.message.trim()
+    if (!message) return
 
     datas.row = 0
-    // 使用传入的handleSendMessage方法处理消息发送
-    props.handleSendMessage(datas.message)
 
-    // 发送后清空并添加反馈动画
-    datas.message = ''
-    if (dom) dom.classList.add('sent-animation')
-    setTimeout(() => dom?.classList.remove('sent-animation'), 300)
+    // 显示加载状态
+    isLoading.value = true
+
+    try {
+      // 调用父组件的发送方法，并等待其完成
+      await props.handleSendMessage(message)
+
+      // 发送成功后清空输入框
+      datas.message = ''
+
+      // 添加发送成功动画
+      if (dom) dom.classList.add('sent-animation')
+      setTimeout(() => dom?.classList.remove('sent-animation'), 300)
+    } catch (error) {
+      console.error('发送消息失败:', error)
+      Toast('发送失败，请重试')
+    } finally {
+      // 无论成功失败都关闭加载状态
+      isLoading.value = false
+    }
   }
 }
 
@@ -436,6 +462,12 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     &::after {
       border: none;
     }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      color: #a0a0a0;
+      cursor: not-allowed;
+    }
   }
 
   .wraps {
@@ -482,6 +514,11 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 
     &.sent-animation {
       animation: sentPulse 0.3s ease;
+    }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      cursor: not-allowed;
     }
   }
 }
@@ -548,7 +585,27 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     &:active {
       transform: scale(0.95);
     }
+
+    &:disabled {
+      background-color: #94ccf2;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    &.loading {
+      background-color: #94ccf2;
+    }
   }
+}
+
+// 加载动画
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
 }
 
 // 更多选项区域
@@ -609,6 +666,10 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   100% { background-color: transparent; }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 // 移动端适配
 @media screen and (max-width: 768px) {
   .info-entry-box {
@@ -666,6 +727,11 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         height: 38px;
       }
     }
+  }
+
+  .loading-spinner {
+    width: 18px;
+    height: 18px;
   }
 }
 
