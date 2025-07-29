@@ -1,10 +1,10 @@
 <template>
-  <div class="w-screen h-screen flex flex-col relative">
+  <div class="w-screen h-screen flex flex-col relative overflow-hidden">
     <!-- 背景图层 -->
     <div class="absolute inset-0 z-[-2]">
       <img
           :src="user?.background || 'http://47.99.131.58:8000/photo?idx=1&image_type=background'"
-          alt="Background"
+          alt="聊天背景图"
           class="absolute inset-0 w-full h-full object-cover"
       />
     </div>
@@ -30,47 +30,50 @@
       </div>
     </div>
 
+    <!-- 消息列表区域 - 核心滚动容器 -->
     <div
-        class=" p-4 flex flex-col justify-between relative overflow-hidden"
-        :style="{ height: contentHeight }"
+        class="flex-1 overflow-y-auto p-4 custom-scrollbar"
+        ref="messageContainer"
+        style="scroll-behavior: smooth; padding-right: 8px;"
     >
-      <!-- 消息列表区域 - 核心滚动容器 -->
-      <div
-          class="flex-1 overflow-y-auto mb--2 custom-scrollbar"
-          ref="messageContainer"
-          style="scroll-behavior: smooth; padding-right: 8px;"
-      >
-        <template v-if="user">
-          <div class="space-y-4 pb-8"> <!-- 底部留白避免最后一条被输入框遮挡 -->
-            <!-- 消息项 -->
-            <div
-                v-for="(e, index) in messageList"
-                :key="e.id"
-                class="flex"
-                :class="{
-                'justify-start': e.type === 'start',
-                'justify-end': e.type === 'end'
-              }"
-            >
-              <!-- 头像区域 -->
-              <div v-if="e.type === 'start'" class="mr-2 mt-1">
-                <div class="w-10 h-10 rounded-full overflow-hidden">
-                  <img
-                      v-if="user"
-                      class="w-full h-full object-cover"
-                      :src="user.avatar"
-                      alt="AI Avatar"
-                  />
-                  <UserOutlined v-else class="w-full h-full" />
-                </div>
+      <template v-if="user">
+        <div class="space-y-4 pb-24">
+          <!-- 消息项 -->
+          <div
+              v-for="(e, index) in messageList"
+              :key="e.id"
+              class="flex items-start"
+              :class="{
+              'justify-start': e.type === 'start',
+              'justify-end': e.type === 'end'
+            }"
+          >
+            <!-- 左侧头像（AI） -->
+            <div v-if="e.type === 'start'" class="mr-1 mt-1 flex-shrink-0">
+              <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
+                <img
+                    v-if="user"
+                    class="w-full h-full object-cover"
+                    :src="user.avatar"
+                    alt="AI头像"
+                />
+                <UserOutlined v-else class="w-full h-full" />
               </div>
+            </div>
 
+            <!-- 消息内容气泡容器 - 包含气泡和突起 -->
+            <div :class="{
+              'flex items-center': true,
+              'pl-2': e.type === 'start',  // 左侧突起预留空间
+              'pr-2': e.type === 'end'     // 右侧突起预留空间
+            }">
               <!-- 消息内容气泡 -->
               <div
-                  class="max-w-[80%] px-4 py-3 rounded-2xl shadow-md"
+                  class="max-w-[80%] px-4 py-3 rounded-2xl shadow-md relative transition-all duration-200"
                   :class="{
-                  'bg-white/90': e.type === 'start',
-                  'bg-green-500 text-white': e.type === 'end'
+                  'bg-white/70 backdrop-blur-sm': e.type === 'start',
+                  'bg-green-500/80 backdrop-blur-sm text-white': e.type === 'end',
+                  'hover:shadow-lg': true
                 }"
               >
                 <p class="m-0">{{ e.content }}</p>
@@ -78,41 +81,48 @@
                 <!-- 语音播放按钮 -->
                 <div
                     v-if="e.type === 'start'"
-                    class="mt-2 flex items-center cursor-pointer"
+                    class="mt-2 flex items-center cursor-pointer text-gray-600 hover:text-gray-900 transition-colors"
                     @click="togglePlay(e, index)"
                 >
                   <template v-if="e.voiceType === 1">
                     <LoadingOutlined style="fontSize: 16px" />
                   </template>
                   <template v-else-if="e.voiceType === 2">
-                    <img src="/playing.gif" alt="Playing" width="16" height="16" />
+                    <img src="/playing.gif" alt="正在播放" width="16" height="16" />
                   </template>
                   <template v-else>
-                    <img src="/stop.png" alt="Stop" width="16" height="16" />
+                    <img src="/stop.png" alt="播放语音" width="16" height="16" />
                   </template>
-                </div>
-              </div>
-
-              <!-- 用户头像 -->
-              <div v-if="e.type === 'end'" class="ml-2 mt-1">
-                <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                  <UserOutlined class="text-white" />
+                  <span class="ml-2 text-sm">点击播放</span>
                 </div>
               </div>
             </div>
+
+            <!-- 右侧头像（用户） -->
+            <div v-if="e.type === 'end'" class="ml-1 mt-1 flex-shrink-0">
+              <div class="w-10 h-10 rounded-full bg-green-500/80 flex items-center justify-center border-2 border-white/80 shadow-sm">
+                <UserOutlined class="text-white" />
+              </div>
+            </div>
           </div>
-        </template>
-
-        <!-- 未选择角色提示 -->
-        <div v-else class="flex-1 flex items-center justify-center">
-          <p class="text-lg">请选择角色</p>
         </div>
-      </div>
+      </template>
 
-      <!-- 输入区域 -->
+      <!-- 未选择角色提示 -->
+      <div v-else class="flex-1 flex items-center justify-center">
+        <p class="text-lg text-gray-600 bg-white/80 px-6 py-3 rounded-full">请选择角色</p>
+      </div>
+    </div>
+
+    <!-- 输入区域 - 固定在底部 -->
+    <div class="input-container px-4 py-3 bg-white/80 backdrop-blur-sm border-t border-gray-200 z-20">
       <InfoEntryBox
-          class="allbtn"
+          class="w-full"
           ref="infoEntry"
+          v-model="value"
+          :loading="loading"
+          @send="handleSendMessage"
+          @cancel="handleCancel"
       />
     </div>
   </div>
@@ -152,7 +162,7 @@ const user = computed(() => store.user);
 const messageData = computed(() => store.messageData);
 const setMessageData = (data: any) => store.setMessageData(data);
 
-// 处理消息数据更新（提前定义，避免初始化顺序问题）
+// 处理消息数据更新
 const handleSetMessageData = (message: Message[]) => {
   if (!user.value) return;
   const index = messageData.value.findIndex((e: any) => e.name === user.value.name);
@@ -173,10 +183,8 @@ const handleSetMessageData = (message: Message[]) => {
 
 // 滚动到消息底部
 const scrollToBottom = () => {
-  // 使用 setTimeout 确保在 DOM 更新后执行
   setTimeout(() => {
     if (messageContainer.value) {
-      // 平滑滚动到底部
       messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
     }
   }, 0);
@@ -197,7 +205,6 @@ onMounted(() => {
 // 监听用户和消息数据变化
 watch([user, messageData], () => {
   if (user.value) {
-    // loading.value = false;
     const msg = messageData.value.find((e: any) => e.name === user.value.name);
     let msgList: Message[] = [];
     if (!msg || msg.message.length === 0) {
@@ -215,7 +222,7 @@ watch([user, messageData], () => {
     }
     messageList.value = msgList;
     handleSetMessageData(msgList);
-    scrollToBottom(); // 数据加载后滚动到底部
+    scrollToBottom();
   }
 }, { immediate: true });
 
@@ -293,7 +300,7 @@ const handleSendMessage = async () => {
   await nextTick();
   messageContainer.value?.scrollTo({ key: 0, block: "nearest" });
 
-  // 直接发送请求，不再通过watch监听loading
+  // 直接发送请求
   if (user.value) {
     try {
       // 准备消息数据
@@ -343,78 +350,112 @@ const handleCancel = () => {
   antMessage.error('取消发送!');
 };
 
-// 监听 loading 状态发送请求
-// watch(loading, (newVal) => {
-//   if (newVal && user.value) {
-//     const ary = messageList.value.map(e => ({
-//       role: e.role,
-//       content: e.content
-//     }));
-//
-//     fetch('/api/chat', {
-//       method: 'POST',
-//       headers: { 'Content-Type': 'application/json' },
-//       body: JSON.stringify({
-//         user_name: token.value,
-//         messages: ary,
-//         id: user.value.id,
-//         direct_mode: props.directMode,
-//       }),
-//     })
-//         .then(res => res.json())
-//         .then((data) => {
-//           loading.value = false;
-//           const id = messageList.value.length === 0
-//               ? 1
-//               : messageList.value[messageList.value.length - 1].id + 1;
-//
-//           const newMessage: Message = {
-//             id,
-//             type: 'start',
-//             content: data.content,
-//             role: data.role,
-//             voiceType: 0
-//           };
-//
-//           messageList.value.push(newMessage);
-//           handleSetMessageData(messageList.value);
-//           scrollToBottom();
-//         })
-//         .catch(() => {
-//           loading.value = false;
-//         });
-//   }
-// });
-
 const message = antMessage;
 </script>
 
 <style scoped>
 /* 自定义滚动条样式 */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px; /* 滚动条宽度 */
+  width: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent; /* 轨道透明 */
-  margin: 10px 0; /* 轨道上下留白 */
+  background: transparent;
+  margin: 10px 0;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5); /* 滑块颜色 */
-  border-radius: 3px; /* 滑块圆角 */
-  transition: background-color 0.2s ease; /* 过渡效果 */
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.8); /*  hover 状态颜色 */
+  background-color: rgba(156, 163, 175, 0.8);
 }
 
-/* 移动端触摸滚动优化 */
+/* 聊天气泡样式 - 关键修改：使用伪元素实现与气泡一体化的突起 */
+.max-w-[80%] {
+  position: relative;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+/* AI消息气泡 - 左侧突起 */
+.bg-white\/70.backdrop-blur-sm::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 12px;
+  width: 16px;
+  height: 16px;
+  background-color: inherit;
+  border-radius: 0 0 0 4px;
+  transform: rotate(45deg);
+  box-shadow: -2px 2px 2px rgba(0, 0, 0, 0.02);
+  z-index: -1;
+}
+
+/* 用户消息气泡 - 右侧突起 */
+.bg-green-500\/80.backdrop-blur-sm::before {
+  content: '';
+  position: absolute;
+  right: -8px;
+  top: 12px;
+  width: 16px;
+  height: 16px;
+  background-color: inherit;
+  border-radius: 0 0 4px 0;
+  transform: rotate(45deg);
+  box-shadow: 2px -2px 2px rgba(0, 0, 0, 0.02);
+  z-index: -1;
+}
+
+/* 移动端适配 */
 @media (max-width: 768px) {
   .custom-scrollbar {
-    -webkit-overflow-scrolling: touch; /* 启用原生触摸滚动优化 */
+    -webkit-overflow-scrolling: touch;
   }
+
+  .input-container {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    padding-top: 12px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  .max-w-[80%] {
+  max-width: 85%;
+}
+
+  .max-w-[80%] p {
+  font-size: 14px;
+}
+
+  /* 移动端气泡突起微调 */
+  .bg-white\/70.backdrop-blur-sm::before,
+  .bg-green-500\/80.backdrop-blur-sm::before {
+    width: 12px;
+    height: 12px;
+    top: 10px;
+  }
+
+  .bg-white\/70.backdrop-blur-sm::before {
+    left: -6px;
+  }
+
+  .bg-green-500\/80.backdrop-blur-sm::before {
+    right: -6px;
+  }
+}
+
+/* 平板及桌面端样式 */
+@media (min-width: 769px) {
+  .input-container {
+    padding-bottom: 73px;
+  }
+
+  .max-w-[80%] {
+  max-width: 70%;
+}
 }
 
 /* 消息项间距 */
@@ -422,10 +463,9 @@ const message = antMessage;
   margin-bottom: 1rem;
 }
 
-.allbtn {
+/* 确保输入容器始终在底部 */
+.input-container {
   width: 100%;
-  position: absolute;
-  bottom: 0;
-  z-index: 2;
+  box-sizing: border-box;
 }
 </style>

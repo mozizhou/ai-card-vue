@@ -1,12 +1,12 @@
 <script setup>
 import { Toast } from 'tdesign-mobile-vue'
-import { ref, reactive, onActivated, defineEmits, onMounted } from 'vue'
+import { ref, reactive, onMounted, defineEmits } from 'vue'
 import Recorder from 'js-audio-recorder'
 import { useSystemStore } from '@/store/system'
-// import { useI18n } from 'vue-i18n'
 import { useMenuStore } from '@/store/menu'
-// import { upload } from '@/api/list'
+
 const ststemStore = useSystemStore()
+const menuStore = useMenuStore()
 
 const moreBlockState = ref(false)
 const datas = reactive({
@@ -17,8 +17,6 @@ const datas = reactive({
   isPC: false,
 })
 const status = ref(1) // 1 文本输入 2 语音输入
-// const { t } = useI18n()
-const menuStore = useMenuStore()
 
 const emits = defineEmits([
   'HandEmitEvent',
@@ -28,17 +26,18 @@ const emits = defineEmits([
 ])
 
 onMounted(() => {
-  if (!/Mobi|Android|iPhone/i.test(navigator.userAgent)) {
-    datas.isPC = true
-  }
+  // 检测设备类型
+  datas.isPC = !/Mobi|Android|iPhone/i.test(navigator.userAgent)
+
+  // 为输入框添加自动聚焦动画
+  setTimeout(() => {
+    const input = document.querySelector('.input_message')
+    if (input) input.classList.add('focus-visible')
+  }, 300)
 })
 
 const onClickAddCircle = () => {
-  if (moreBlockState.value) {
-    moreBlockState.value = false
-  } else {
-    moreBlockState.value = true
-  }
+  moreBlockState.value = !moreBlockState.value
 }
 
 const HandleShowAudit = () => {
@@ -54,38 +53,43 @@ const HandleShowAudit = () => {
     }
   } else {
     Recorder.getPermission().then(
-      () => {
-        ststemStore.handleCanAudio(true)
-      },
-      (error) => {
-        Toast('noMedio')
-      },
+        () => {
+          ststemStore.handleCanAudio(true)
+        },
+        (error) => {
+          Toast('noMedio')
+        },
     )
   }
 }
 
 const HandleSendMessage = (event) => {
-  if (event.key == 'Enter' || !event.key) {
+  // 支持Enter发送和按钮点击发送
+  if (event.key === 'Enter' || !event.key) {
     if (localStorage.getItem('isAnonymous')) {
       menuStore.HandleShowLogin(true)
       return
     }
-    let dom = document.querySelector('.input_message')
-    if (dom) {
-      dom.blur()
-    }
-    if (!datas.message) return
+
+    const dom = document.querySelector('.input_message')
+    if (dom) dom.blur()
+
+    if (!datas.message.trim()) return
+
     datas.row = 0
     emits('HandEmitMessage', datas.image ? `![](${datas.image})${datas.message}` : datas.message)
+
+    // 发送后清空并添加反馈动画
+    datas.message = ''
+    if (dom) dom.classList.add('sent-animation')
+    setTimeout(() => dom?.classList.remove('sent-animation'), 300)
   }
 }
 
 const HandleIsShowModel = (event) => {
-  if (datas.message[datas.message.length - 1] == '@') {
-    if (event.key != 'Backspace') {
-      document.querySelector('.input_message').blur()
-      emits('HandleShowSelectModel')
-    }
+  if (datas.message[datas.message.length - 1] === '@' && event.key !== 'Backspace') {
+    document.querySelector('.input_message')?.blur()
+    emits('HandleShowSelectModel')
   }
 }
 
@@ -95,77 +99,60 @@ const HandleClearMessage = () => {
 }
 
 const HandleAudioMove = (event) => {
+  let x, y
   if (datas.isPC) {
-    let x = event.clientX / window.innerWidth
-    let y = (window.innerHeight - event.clientY) / window.innerWidth
-    if (x > 0.47 && x < 0.533 && y > 0.17 && y < 0.234) {
-      emits('HandleCloseStyle', true)
-    } else {
-      emits('HandleCloseStyle', false)
-    }
+    x = event.clientX / window.innerWidth
+    y = (window.innerHeight - event.clientY) / window.innerWidth
+    emits('HandleCloseStyle', x > 0.47 && x < 0.533 && y > 0.17 && y < 0.234)
   } else {
-    let x = event.changedTouches[event.changedTouches.length - 1].clientX / window.innerWidth
-    let y =
-      (window.innerHeight - event.changedTouches[event.changedTouches.length - 1].clientY) /
-      window.innerWidth
-    if (x > 0.4 && x < 0.61 && y > 0.38 && y < 0.6) {
-      emits('HandleCloseStyle', true)
-    } else {
-      emits('HandleCloseStyle', false)
-    }
+    const touch = event.changedTouches[event.changedTouches.length - 1]
+    x = touch.clientX / window.innerWidth
+    y = (window.innerHeight - touch.clientY) / window.innerWidth
+    emits('HandleCloseStyle', x > 0.4 && x < 0.61 && y > 0.38 && y < 0.6)
   }
 }
 
 const HandleAudioEnd = (event) => {
   if (localStorage.getItem('isAnonymous')) return
+
+  let x, y
   if (datas.isPC) {
-    let x = event.clientX / window.innerWidth
-    let y = (window.innerHeight - event.clientY) / window.innerWidth
-    if (x > 0.47 && x < 0.533 && y > 0.17 && y < 0.234) {
-      emits('HandleAudioEnd', false)
-    } else {
-      emits('HandleAudioEnd', true)
-    }
+    x = event.clientX / window.innerWidth
+    y = (window.innerHeight - event.clientY) / window.innerWidth
+    emits('HandleAudioEnd', !(x > 0.47 && x < 0.533 && y > 0.17 && y < 0.234))
+    window.removeEventListener('mouseup', HandleAudioEnd)
+    window.removeEventListener('mousemove', HandleAudioMove)
   } else {
-    let x = event.changedTouches[event.changedTouches.length - 1].clientX / window.innerWidth
-    let y =
-      (window.innerHeight - event.changedTouches[event.changedTouches.length - 1].clientY) /
-      window.innerWidth
-    if (x > 0.4 && x < 0.61 && y > 0.38 && y < 0.6) {
-      emits('HandleAudioEnd', false)
-    } else {
-      emits('HandleAudioEnd', true)
-    }
+    const touch = event.changedTouches[event.changedTouches.length - 1]
+    x = touch.clientX / window.innerWidth
+    y = (window.innerHeight - touch.clientY) / window.innerWidth
+    emits('HandleAudioEnd', !(x > 0.4 && x < 0.61 && y > 0.38 && y < 0.6))
   }
 }
 
 const HandleSelectAi = (text) => {
-  for (let i = 0; i < text.length; i++) {
-    datas.message = datas.message + `@${text[i]} `
-    datas.message = datas.message.replaceAll('@@', '@')
-  }
+  text.forEach(item => {
+    datas.message += `@${item} `
+  })
+  datas.message = datas.message.replaceAll('@@', '@')
 }
 
 const HandleChange = () => {
+  // 动态计算输入框高度
   let byteSize = 0
   for (let i = 0; i < datas.message.length; i++) {
     const charCode = datas.message.charCodeAt(i)
-    if (charCode <= 0x7f) {
-      byteSize += 1
-    } else {
-      byteSize += 1.714
-    }
+    byteSize += charCode <= 0x7f ? 1 : 1.714
   }
-  if (Math.ceil(byteSize) / 32 <= 3) {
-    datas.row = Math.floor(Math.ceil(byteSize) / 32)
-  }
+  datas.row = Math.min(3, Math.floor(Math.ceil(byteSize) / 32))
 }
 
 const getFile = (file) => {
-  var formData = new FormData()
+  const formData = new FormData()
   formData.append('name', file.target.files[0].name)
   formData.append('file', file.target.files[0])
   menuStore.handleShowLoading(true)
+  // 注释掉的上传功能
   // upload(formData)
   //   .then((res) => {
   //     menuStore.handleShowLoading(false)
@@ -189,69 +176,108 @@ defineExpose({
 
 <template>
   <div class="intr_wrap">
+    <!-- 选中的图片预览 -->
     <div class="top" v-if="datas.image">
       <div class="list">
-        <div class="close" @click="closeimage"></div>
-        <img :src="datas.image" alt="" />
+        <div class="close" @click="closeimage" title="移除图片"></div>
+        <img :src="datas.image" :alt="`预览图: ${datas.image.split('/').pop()}`" />
       </div>
     </div>
+
+    <!-- 主输入区域 -->
     <div class="info-entry-box flex flex-col gap-2" :class="{ active: moreBlockState }">
-      <div class="flex w-full gap-2" :class="datas.row == 0 ? 'items-center' : 'items-end'">
+      <div class="flex w-full gap-2 items-center" :class="datas.row > 0 ? 'items-end' : ''">
+        <!-- 切换按钮 -->
         <div class="navigation">
-          <div class="showall"></div>
-          <div class="keyboard" v-if="status == 2" @click="status = 1"></div>
-          <div class="audit_btn" v-if="status == 1" @click="status = 2"></div>
+          <div class="keyboard" v-if="status === 2" @click="status = 1" title="切换到文字输入"></div>
+          <div class="audit_btn" v-if="status === 1" @click="status = 2" title="切换到语音输入"></div>
         </div>
-        <div class="text_wrap" :class="'input' + datas.row" v-if="status == 1">
+
+        <!-- 文字输入区域 -->
+        <div class="text_wrap" :class="'input' + datas.row" v-if="status === 1">
           <textarea
-            class="input_message"
-            @input="HandleChange"
-            v-model="datas.message"
-            placeholder=""
-            @keydown="HandleSendMessage"
-            @keyup="HandleIsShowModel"
+              class="input_message"
+              @input="HandleChange"
+              v-model="datas.message"
+              placeholder="输入消息..."
+              @keydown="HandleSendMessage"
+              @keyup="HandleIsShowModel"
+              @focus="moreBlockState = false"
           ></textarea>
-          <!-- <div
-          class="input_message"
-          v-html="datas.message"
-          @keydown="HandleSendMessage"
-          contenteditable="true"
-          @input="HandleChange"
-          id="inputField"
-        ></div> -->
         </div>
-        <div class="flex-1 flex voice-wrap" v-if="status == 2">
+
+        <!-- 语音输入区域 -->
+        <div class="flex-1 flex voice-wrap" v-if="status === 2">
           <t-button class="voice-button" shape="round">
-            {{ 'PressAudit' }}
+            按住说话
           </t-button>
           <div
-            class="wraps"
-            @touchstart="HandleShowAudit"
-            @touchmove="HandleAudioMove"
-            @touchend="HandleAudioEnd"
-            @mousedown="HandleShowAudit"
+              class="wraps"
+              @touchstart="HandleShowAudit"
+              @touchmove="HandleAudioMove"
+              @touchend="HandleAudioEnd"
+              @mousedown="HandleShowAudit"
+              @mouseup="HandleAudioEnd"
+              @mousemove="HandleAudioMove"
           ></div>
         </div>
+
+        <!-- 发送按钮/更多选项 -->
         <div class="more_child">
-          <!-- <t-icon
-            name="add-circle"
-            v-if="status == 1 && datas.message == ''"
-            size="22px"
-            @click="onClickAddCircle"
-          /> -->
-          <!-- v-if="status == 1 && datas.message.length > 0" -->
-          <div class="text" v-if="status == 1" @click="HandleSendMessage">
-            {{ 'send' }}
+          <div
+              class="add-btn"
+              v-if="status === 1 && !datas.message"
+              @click="onClickAddCircle"
+              title="更多选项"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="#646566" stroke-width="2"/>
+              <line x1="12" y1="6" x2="12" y2="18" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <line x1="6" y1="12" x2="18" y2="12" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <div
+              class="send-btn"
+              v-if="status === 1 && datas.message"
+              @click="HandleSendMessage"
+              title="发送消息"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 2L11 13L2 2L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M22 2L15 22L11 13L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
         </div>
       </div>
-      <div class="image">
-        <div class="list">
+
+      <!-- 更多选项区域 -->
+      <div class="more-options" v-if="moreBlockState">
+        <div class="option-item" @click="onClickAddCircle">
           <input type="file" class="upload" @change="getFile" accept="image/*" />
-          <div class="img_wrap">
-            <img src="../../../assets/image.png" alt="" />
+          <div class="icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#646566" stroke-width="2"/>
+              <circle cx="12" cy="10" r="3" stroke="#646566" stroke-width="2"/>
+              <path d="M12 14V17" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M15 16H9" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
           </div>
-          <div class="text">{{ 'image' }}</div>
+          <span>图片</span>
+        </div>
+
+        <!-- 可以添加更多选项 -->
+        <div class="option-item" @click="onClickAddCircle">
+          <div class="icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 2V8H20" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 13H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 17H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M10 9H9H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>文件</span>
         </div>
       </div>
     </div>
@@ -259,355 +285,383 @@ defineExpose({
 </template>
 
 <style lang="scss" scoped>
-.info-entry-box {
-  padding: 20px 20px 30px;
-  background-color: #f2f4f5;
-  height: 66px;
-  transition: height 300ms;
+// 基础样式变量
+$primary-color: #0faef2;
+$primary-dark: #0d96d6;
+$bg-light: #f2f4f5;
+$text-dark: #1a1a1a;
+$text-gray: #646566;
+$white: #ffffff;
+$border-radius: 24px;
+$shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 
-  &.active {
-    height: 240px;
-  }
+// 主容器
+.intr_wrap {
+  width: 100%;
+  box-sizing: border-box;
 }
+
+// 图片预览区域
 .top {
-  margin-bottom: 25px;
+  margin-bottom: 12px;
+  padding-left: 12px;
+
   .list {
-    width: 160px;
-    height: 160px;
+    width: 100px;
+    height: 100px;
     border-radius: 8px;
     background: #292929;
     overflow: hidden;
-    margin-left: 32px;
     position: relative;
-    img {
-      width: 160px;
-    }
-    &::after {
-      content: '';
-      width: 86px;
-      height: 86px;
-      display: inline-block;
-      background: #00000099;
-      position: absolute;
-      right: -40px;
-      top: -40px;
-      transform: rotate(45deg);
-    }
-    .close {
-      width: 48px;
-      height: 48px;
-      background: url('../../../assets/closewhite.png') no-repeat;
-      background-size: 12px 12px;
-      background-position: 24px 12px;
-      position: absolute;
-      right: 0;
-      top: 0;
-      z-index: 2;
-    }
-  }
-}
+    box-shadow: $shadow;
 
-.image {
-  display: flex;
-  align-items: center;
-  .list {
-    width: 100px;
-    height: 148px;
-    position: relative;
-    .upload {
+    img {
       width: 100%;
       height: 100%;
-      opacity: 0;
-      position: absolute;
-      top: 0;
-      left: 0;
+      object-fit: cover;
     }
-    .img_wrap {
-      width: 100px;
-      height: 100px;
-      border-radius: 12px;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      img {
-        width: 48px;
-        height: 48px;
+
+    &::after {
+      content: '';
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.6);
+      position: absolute;
+      right: -20px;
+      top: -20px;
+      transform: rotate(45deg);
+    }
+
+    .close {
+      width: 24px;
+      height: 24px;
+      background: url('../../../assets/closewhite.png') no-repeat center;
+      background-size: 14px;
+      position: absolute;
+      right: 4px;
+      top: 4px;
+      z-index: 2;
+      cursor: pointer;
+      transition: transform 0.2s;
+
+      &:hover {
+        transform: scale(1.1);
       }
     }
-    .text {
-      font-size: 26px;
-      color: #646566;
-      text-align: center;
-      margin-top: 12px;
-    }
   }
-}
-.navigation {
-  .showall {
-  }
-}
-.audit_btn {
-  width: 56px;
-  height: 56px;
-  background: url('../../../assets/audit_btn.png') no-repeat;
-  background-size: 49px 49px;
-  background-position: 3px 3px;
 }
 
-.keyboard {
-  width: 56px;
-  height: 56px;
-  background: url('../../../assets/text.png') no-repeat;
-  background-size: 49px 49px;
-  background-position: 3px 3px;
+// 输入框主容器
+.info-entry-box {
+  padding: 12px;
+  background-color: $bg-light;
+  border-radius: 16px 16px 0 0;
+  transition: all 0.3s ease;
+  min-height: 60px;
+
+  &.active {
+    padding-bottom: 16px;
+  }
 }
+
+// 导航按钮（语音/文字切换）
+.navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: $white;
+  box-shadow: $shadow;
+  transition: transform 0.2s;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+
+  .audit_btn, .keyboard {
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    cursor: pointer;
+  }
+
+  .audit_btn {
+    background-image: url('../../../assets/audit_btn.png');
+  }
+
+  .keyboard {
+    background-image: url('../../../assets/text.png');
+  }
+}
+
+// 语音输入区域
 .voice-wrap {
-  height: 84px;
-  width: 700px;
+  height: 44px;
+  flex: 1;
   position: relative;
+
   .voice-button {
-    --td-button-default-bg-color: white;
-    height: 84px;
-    width: 700px;
-    font-size: 30px;
+    --td-button-default-bg-color: $white;
+    --td-button-default-color: $text-dark;
+    height: 100%;
+    width: 100%;
+    font-size: 15px;
+    border-radius: 22px;
+    box-shadow: $shadow;
+    transition: all 0.2s;
+    display: flex;        /* 添加flex布局 */
+    align-items: center;  /* 垂直居中 */
+    justify-content: center; /* 水平居中 */
+
+    &:active {
+      background-color: #f0f0f0;
+    }
+
     &::after {
       border: none;
     }
   }
+
   .wraps {
-    height: 84px;
-    width: 700px;
+    height: 100%;
+    width: 100%;
     position: absolute;
     top: 0;
     left: 0;
+    border-radius: 22px;
   }
 }
 
+// 文字输入区域
 .text_wrap {
-  height: 120px;
-  padding: 20px 24px 20px 24px;
-  background: white;
-  border-radius: 42px;
   flex: 1;
+  position: relative;
+  min-height: 44px;
+  padding: 12px 16px;
+  background: $white;
+  border-radius: 22px;
+  box-shadow: $shadow;
+  transition: all 0.2s;
+
+  .input_message {
+    width: 100%;
+    height: 100%;
+    border: none;
+    font-size: 15px;
+    overflow: auto;
+    padding: 0;
+    line-height: 1.5;
+    outline: none;
+    resize: none;
+    color: $text-dark;
+    background: transparent;
+
+    &::placeholder {
+      color: #a0a0a0;
+    }
+
+    &.focus-visible {
+      animation: focusPulse 0.3s ease;
+    }
+
+    &.sent-animation {
+      animation: sentPulse 0.3s ease;
+    }
+  }
 }
 
-.input_message {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  font-size: 28px;
-  overflow: hidden;
-  padding: 0;
-  line-height: 42px;
-  outline: none;
-  resize: none;
-}
-
+// 输入框高度调整
 .input0 {
-  height: 44px;
+  .input_message {
+    height: 20px;
+  }
 }
 
 .input1 {
-  height: 80px;
-}
-
-.list {
-  margin-left: 60px;
-}
-.icon {
-  width: 100px;
-  height: 100px;
-  margin-top: 24px;
-  background-image: url('../../../assets/image.png');
-  background-repeat: no-repeat;
-  background-color: white;
-  background-size: 48px 48px;
-  background-position: 26px 26px;
-  border-radius: 12px;
-}
-
-.file_icon {
-  background-image: url('../../../assets/file.png');
-  background-repeat: no-repeat;
-  background-color: white;
-  background-size: 48px 48px;
-  background-position: 26px 26px;
-}
-.name {
-  font-size: 26px;
-  color: #646566;
-  text-align: center;
-  margin-top: 12px;
-}
-.more_child {
-  .text {
-    padding: 18px 32px;
-    background: #0faef2;
-    border-radius: 42px;
-    text-align: center;
-    font-size: 28px;
-    color: white;
+  min-height: 60px;
+  .input_message {
+    height: 40px;
   }
 }
 
+.input2 {
+  min-height: 90px;
+  .input_message {
+    height: 70px;
+  }
+}
+
+// 更多选项和发送按钮区域
+.more_child {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+
+  .add-btn, .send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .add-btn {
+    background-color: $white;
+    box-shadow: $shadow;
+
+    &:hover {
+      transform: scale(1.05);
+      background-color: #f9f9f9;
+    }
+  }
+
+  .send-btn {
+    background-color: $primary-color;
+    box-shadow: 0 2px 8px rgba(15, 174, 242, 0.4);
+
+    &:hover {
+      background-color: $primary-dark;
+      transform: scale(1.05);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+// 更多选项区域
+.more-options {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0 4px 48px; // 与导航按钮对齐
+
+  .option-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    width: 60px;
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+
+    .upload {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background-color: $white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: $shadow;
+      margin-bottom: 6px;
+    }
+
+    span {
+      font-size: 12px;
+      color: $text-gray;
+      text-align: center;
+    }
+  }
+}
+
+// 动画效果
+@keyframes focusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(15, 174, 242, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(15, 174, 242, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(15, 174, 242, 0); }
+}
+
+@keyframes sentPulse {
+  0% { background-color: rgba(15, 174, 242, 0.1); }
+  100% { background-color: transparent; }
+}
+
+// 移动端适配
 @media screen and (max-width: 768px) {
   .info-entry-box {
-    padding: 8.5px 8.5px 13px;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-    height: 30px;
-    &.active {
-      height: 104px;
-    }
+    padding: 8px;
+    border-radius: 12px 12px 0 0;
   }
 
   .top {
-    margin-bottom: 11px;
+    margin-bottom: 8px;
+    padding-left: 8px;
+
     .list {
-      width: 69.5px;
-      height: 69.5px;
-      border-radius: 3px;
-      background: #292929;
-      overflow: hidden;
-      margin-left: 14px;
-      position: relative;
-      img {
-        width: 69.5px;
-      }
-      &::after {
-        content: '';
-        width: 37.3px;
-        height: 37.3px;
-        display: inline-block;
-        background: #00000099;
-        position: absolute;
-        right: -17.3;
-        top: -17.3;
-        transform: rotate(45deg);
-      }
-      .close {
-        width: 21px;
-        height: 21px;
-        background: url('../../../assets/closewhite.png') no-repeat;
-        background-size: 5px 5px;
-        background-position: 10px 5px;
-        position: absolute;
-        right: 0;
-        top: 0;
-        z-index: 2;
-      }
+      width: 80px;
+      height: 80px;
     }
   }
 
-  .image {
-    display: flex;
-    align-items: center;
-    .list {
-      width: 43.5px;
-      height: 64.3px;
-      position: relative;
-      .upload {
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        position: absolute;
-        top: 0;
-        left: 0;
-      }
-      .img_wrap {
-        width: 43.5px;
-        height: 43.5px;
-        border-radius: 5px;
-        background: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        img {
-          width: 21px;
-          height: 21px;
-        }
-      }
-      .text {
-        font-size: 12px;
-        color: #646566;
-        text-align: center;
-        margin-top: 5px;
-      }
-    }
-  }
-  .audit_btn {
-    width: 24px;
-    height: 24px;
-    background-size: 21px 21px;
-    background-position: 1.2px 1.2px;
-  }
-
-  .keyboard {
-    width: 24px;
-    height: 24px;
-    background-size: 21px 21px;
-    background-position: 1.2px 1.2px;
-  }
-  .voice-wrap {
-    height: 36.5px;
-    width: 304px;
-    .voice-button {
-      height: 36.5px;
-      width: 304px;
-      font-size: 13px;
-    }
-    .wraps {
-      height: 36.5px;
-      width: 304px;
-    }
+  .navigation,
+  .more_child,
+  .add-btn,
+  .send-btn {
+    width: 38px;
+    height: 38px;
   }
 
   .text_wrap {
-    width: 234px;
-    height: 52px;
-    padding: 8.5px 13px 8.5px 13px;
-    background: white;
-    border-radius: 18px;
-  }
+    padding: 10px 14px;
+    min-height: 38px;
 
-  .input_message {
-    font-size: 12px;
-    line-height: 18px;
-  }
-
-  .input0 {
-    height: 19px;
-  }
-
-  .input1 {
-    height: 35px;
-  }
-
-  .list {
-    margin-left: 26px;
-  }
-  .icon {
-    margin-top: 10px;
-    background-size: 21px 21px;
-    background-position: 12px 12px;
-    border-radius: 5px;
-  }
-
-  .file_icon {
-    background-size: 21px 21px;
-    background-position: 12px 12px;
-  }
-  .name {
-    font-size: 12px;
-    margin-top: 5px;
-  }
-  .more_child {
-    .text {
-      padding: 8px 14px;
-      border-radius: 18px;
-      font-size: 12px;
+    .input_message {
+      font-size: 14px;
     }
+  }
+
+  .voice-wrap {
+    height: 38px;
+
+    .voice-button {
+      font-size: 13px;
+      display: flex;        /* 添加flex布局 */
+      align-items: center;  /* 垂直居中 */
+      justify-content: center; /* 水平居中 */
+    }
+  }
+
+  .more-options {
+    gap: 12px;
+    padding-left: 42px;
+
+    .option-item {
+      width: 50px;
+
+      .icon-wrap {
+        width: 38px;
+        height: 38px;
+      }
+    }
+  }
+}
+
+// 桌面端适配
+@media screen and (min-width: 769px) {
+  .info-entry-box {
+    max-width: 800px;
+    margin: 0 auto;
   }
 }
 </style>
