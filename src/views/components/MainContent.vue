@@ -31,7 +31,7 @@
     </div>
 
     <div
-        class="flex-1 p-4 flex flex-col justify-between relative overflow-hidden"
+        class=" p-4 flex flex-col justify-between relative overflow-hidden"
         :style="{ height: contentHeight }"
     >
       <!-- 消息列表区域 - 核心滚动容器 -->
@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, watch, onMounted, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { UserOutlined, LoadingOutlined } from '@ant-design/icons-vue';
 import { message as antMessage } from 'ant-design-vue';
@@ -143,6 +143,7 @@ const loading = ref(false);
 const token = ref('');
 const contentHeight = ref('calc(100vh - 120px)');
 const audio = ref<HTMLAudioElement | null>(null);
+const mainRef = ref<HTMLElement | null>(null);
 
 // 路由和状态
 const router = useRouter();
@@ -196,7 +197,7 @@ onMounted(() => {
 // 监听用户和消息数据变化
 watch([user, messageData], () => {
   if (user.value) {
-    loading.value = false;
+    // loading.value = false;
     const msg = messageData.value.find((e: any) => e.name === user.value.name);
     let msgList: Message[] = [];
     if (!msg || msg.message.length === 0) {
@@ -273,20 +274,67 @@ const handleSendMessage = async () => {
   if (!value.value.trim()) return;
 
   loading.value = true;
+
+  // 生成新消息ID
   const id = messageList.value.length === 0
       ? 1
       : messageList.value[messageList.value.length - 1].id + 1;
 
-  messageList.value.push({
-    id,
-    type: 'end',
-    content: value.value,
-    role: 'user',
-    voiceType: 0
-  });
+  // 添加用户消息
+  messageList.value = [
+    ...messageList.value,
+    { id, type: "end", content: value.value, role: "user" }
+  ];
+
+  // 清空输入框
   value.value = '';
 
-  scrollToBottom();
+  // 滚动到底部
+  await nextTick();
+  messageContainer.value?.scrollTo({ key: 0, block: "nearest" });
+
+  // 直接发送请求，不再通过watch监听loading
+  if (user.value) {
+    try {
+      // 准备消息数据
+      const ary = messageList.value.map(e => ({
+        role: e.role,
+        content: e.content
+      }));
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          user_name: token.value,
+          messages: ary,
+          id: user.value.id,
+          direct_mode: props.directMode,
+        }),
+      });
+
+      const data = await response.json();
+
+      // 生成AI消息ID
+      const aiId = messageList.value.length + 1;
+
+      // 添加AI回复
+      const newMessageList = [
+        ...messageList.value,
+        {id: aiId, type: "start", content: data.content, role: data.role}];
+      messageList.value = newMessageList;
+      handleSetMessageData(newMessageList);
+
+      // 滚动到底部
+      nextTick(() => {
+        scrollToBottom()
+      });
+    } catch (err) {
+      console.error('聊天请求失败:', err);
+    } finally {
+      loading.value = false;
+    }
+  }
 };
 
 // 取消发送
@@ -296,47 +344,47 @@ const handleCancel = () => {
 };
 
 // 监听 loading 状态发送请求
-watch(loading, (newVal) => {
-  if (newVal && user.value) {
-    const ary = messageList.value.map(e => ({
-      role: e.role,
-      content: e.content
-    }));
-
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_name: token.value,
-        messages: ary,
-        id: user.value.id,
-        direct_mode: props.directMode,
-      }),
-    })
-        .then(res => res.json())
-        .then((data) => {
-          loading.value = false;
-          const id = messageList.value.length === 0
-              ? 1
-              : messageList.value[messageList.value.length - 1].id + 1;
-
-          const newMessage: Message = {
-            id,
-            type: 'start',
-            content: data.content,
-            role: data.role,
-            voiceType: 0
-          };
-
-          messageList.value.push(newMessage);
-          handleSetMessageData(messageList.value);
-          scrollToBottom();
-        })
-        .catch(() => {
-          loading.value = false;
-        });
-  }
-});
+// watch(loading, (newVal) => {
+//   if (newVal && user.value) {
+//     const ary = messageList.value.map(e => ({
+//       role: e.role,
+//       content: e.content
+//     }));
+//
+//     fetch('/api/chat', {
+//       method: 'POST',
+//       headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({
+//         user_name: token.value,
+//         messages: ary,
+//         id: user.value.id,
+//         direct_mode: props.directMode,
+//       }),
+//     })
+//         .then(res => res.json())
+//         .then((data) => {
+//           loading.value = false;
+//           const id = messageList.value.length === 0
+//               ? 1
+//               : messageList.value[messageList.value.length - 1].id + 1;
+//
+//           const newMessage: Message = {
+//             id,
+//             type: 'start',
+//             content: data.content,
+//             role: data.role,
+//             voiceType: 0
+//           };
+//
+//           messageList.value.push(newMessage);
+//           handleSetMessageData(messageList.value);
+//           scrollToBottom();
+//         })
+//         .catch(() => {
+//           loading.value = false;
+//         });
+//   }
+// });
 
 const message = antMessage;
 </script>
@@ -372,5 +420,12 @@ const message = antMessage;
 /* 消息项间距 */
 .space-y-4 > div {
   margin-bottom: 1rem;
+}
+
+.allbtn {
+  width: 100%;
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
 }
 </style>

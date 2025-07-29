@@ -16,7 +16,7 @@ const datas = reactive({
   lastMentionNode: null,
   isPC: false,
 })
-const status = ref(2) // 1 文本输入 2 语音输入
+const status = ref(1) // 1 文本输入 2 语音输入
 // const { t } = useI18n()
 const menuStore = useMenuStore()
 
@@ -451,7 +451,7 @@ defineExpose({
   }
 }
 
-@media screen and (min-width: 768px) {
+@media screen and (max-width: 768px) {
   .info-entry-box {
     padding: 8.5px 8.5px 13px;
     border-top-left-radius: 14px;
