@@ -13,22 +13,6 @@
     <div class="absolute inset-0 bg-black/5 z-[-1]"></div>
 
     <!-- 直接聊天模式标题栏 -->
-    <div v-if="directMode && user" class="w-full p-3 flex items-center justify-center z-10">
-      <div class="px-6 py-2 bg-white/30 backdrop-blur-md rounded-full shadow-lg">
-        <h3
-            style="
-            margin: 0;
-            text-align: center;
-            text-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 0px 4px rgba(255,255,255,0.7);
-            font-weight: bold;
-            color: #1a1a1a;
-            font-size: 1.5rem;
-          "
-        >
-          {{ user.name }}
-        </h3>
-      </div>
-    </div>
 
     <!-- 消息列表区域 - 核心滚动容器 -->
     <div
@@ -431,7 +415,7 @@ const message = antMessage;
   }
 
   .input-container {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    padding-bottom: calc(55px + env(safe-area-inset-bottom));
     padding-top: 12px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   }
@@ -440,7 +424,7 @@ const message = antMessage;
 /* 平板及桌面端样式 */
 @media (min-width: 769px) {
   .input-container {
-    padding-bottom: 73px;
+    padding-bottom: 55px;
   }
 }
 
