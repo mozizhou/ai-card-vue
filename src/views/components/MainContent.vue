@@ -27,7 +27,7 @@
         :style="{ height: contentHeight }"
     >
       <div class="flex-1 overflow-y-auto mb-2">
-        <BubbleList
+        <Bubble
             ref="mainRef"
             :roles="rolesAsObject"
             :items="messageList"
@@ -60,10 +60,10 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { Button, Input, message as antMessage } from 'ant-design-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
-import { BubbleList } from '@ant-design/x-vue';
+import { Bubble } from '@ant-design/x';
 import { useMainStore } from '@/store/store'; // 假设Pinia store路径
 import { Message, User, MessageData } from '@/types';
-import { useMobileAudio } from '@/hooks/useMobileAudio';
+// import { useMobileAudio } from '@/hooks/useMobileAudio';
 
 // 定义组件props
 const props = defineProps<{
@@ -80,7 +80,7 @@ const setMessageData = store.setMessageData;
 const value = ref('');
 const messageList = ref<Message[]>([]);
 const currentPlayingId = ref<number | null>(null);
-const mainRef = ref<InstanceType<typeof BubbleList> | null>(null);
+const mainRef = ref<typeof Bubble | null>(null);
 const token = ref('');
 const contentHeight = ref('calc(100vh - 120px)');
 const loading = ref(false);
