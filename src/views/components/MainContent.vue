@@ -65,14 +65,14 @@
             <div class="flex items-center">
               <!-- 消息内容气泡 - 带透明效果的微信风格 -->
               <div
-                  class="max-w-[80%] px-4 py-2.5 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 break-words"
+                  class="px-4 py-2.5 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 inline-block"
                   :class="{
                   'bg-white/90 rounded-tl-none': e.type === 'start',
                   'bg-[#95EC69]/90 text-white rounded-tr-none': e.type === 'end',
                   'hover:shadow-lg': true
                 }"
               >
-                <p class="m-0 text-sm leading-relaxed whitespace-pre-wrap">{{ e.content }}</p>
+                <p class="m-0 text-sm leading-relaxed">{{ e.content }}</p>
 
                 <!-- 语音播放按钮 -->
                 <div
@@ -405,8 +405,9 @@ const message = antMessage;
 
 /* 微信风格气泡样式 - 带透明效果 */
 .max-w-[80%] {
-  word-wrap: break-word;
-  word-break: break-word;
+/* 移除强制换行属性，仅在必要时换行 */
+  word-wrap: unset;
+  word-break: unset;
 }
 
 .rounded-tl-none {

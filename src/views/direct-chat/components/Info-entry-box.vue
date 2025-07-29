@@ -24,6 +24,7 @@
               @input="HandleChange"
               v-model="datas.message"
               placeholder="输入消息..."
+              @keyup.enter="handleSendMessage"
               @keyup="HandleIsShowModel"
               @focus="moreBlockState = false"
           ></textarea>
