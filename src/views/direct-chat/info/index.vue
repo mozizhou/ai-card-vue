@@ -19,10 +19,10 @@
     </template>
     <template v-else>
       <a-list
-          :grid="{ gutter: 16, column: 3 }"
+          :grid="{ gutter: 16, xs: 1, sm:2 ,md:2, lg: 3, xl: 4, xxl: 5, xxxl:6 }"
           :data-source="characters"
       >
-        <template #renderItem="item">
+        <template #renderItem="{ item }">
           <a-list-item>
             <a-card
                 :title="`${item.name} (ID: ${item.id})`"
