@@ -1,3 +1,113 @@
+<template>
+  <div class="intr_wrap">
+    <!-- 选中的图片预览 -->
+    <div class="top" v-if="datas.image">
+      <div class="list">
+        <div class="close" @click="closeimage" title="移除图片"></div>
+        <img :src="datas.image" :alt="`预览图: ${datas.image.split('/').pop()}`" />
+      </div>
+    </div>
+
+    <!-- 主输入区域 -->
+    <div class="info-entry-box flex flex-col gap-2" :class="{ active: moreBlockState }">
+      <div class="flex w-full gap-2 items-center" :class="datas.row > 0 ? 'items-end' : ''">
+        <!-- 切换按钮 -->
+        <div class="navigation">
+          <div class="keyboard" v-if="status === 2" @click="status = 1" title="切换到文字输入"></div>
+          <div class="audit_btn" v-if="status === 1" @click="status = 2" title="切换到语音输入"></div>
+        </div>
+
+        <!-- 文字输入区域 -->
+        <div class="text_wrap" :class="'input' + datas.row" v-if="status === 1">
+          <textarea
+              class="input_message"
+              @input="HandleChange"
+              v-model="datas.message"
+              placeholder="输入消息..."
+              @keydown="HandleSendMessage"
+              @keyup="HandleIsShowModel"
+              @focus="moreBlockState = false"
+          ></textarea>
+        </div>
+
+        <!-- 语音输入区域 -->
+        <div class="flex-1 flex voice-wrap" v-if="status === 2">
+          <t-button class="voice-button" shape="round">
+            按住说话
+          </t-button>
+          <div
+              class="wraps"
+              @touchstart="HandleShowAudit"
+              @touchmove="HandleAudioMove"
+              @touchend="HandleAudioEnd"
+              @mousedown="HandleShowAudit"
+              @mouseup="HandleAudioEnd"
+              @mousemove="HandleAudioMove"
+          ></div>
+        </div>
+
+        <!-- 发送按钮/更多选项 -->
+        <div class="more_child">
+          <div
+              class="add-btn"
+              v-if="status === 1 && !datas.message"
+              @click="onClickAddCircle"
+              title="更多选项"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="#646566" stroke-width="2"/>
+              <line x1="12" y1="6" x2="12" y2="18" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <line x1="6" y1="12" x2="18" y2="12" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+
+          <div
+              class="send-btn"
+              v-if="status === 1 && datas.message"
+              @click="HandleSendMessage"
+              title="发送消息"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 2L11 13L2 2L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M22 2L15 22L11 13L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- 更多选项区域 -->
+      <div class="more-options" v-if="moreBlockState">
+        <div class="option-item" @click="onClickAddCircle">
+          <input type="file" class="upload" @change="getFile" accept="image/*" />
+          <div class="icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#646566" stroke-width="2"/>
+              <circle cx="12" cy="10" r="3" stroke="#646566" stroke-width="2"/>
+              <path d="M12 14V17" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M15 16H9" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>图片</span>
+        </div>
+
+        <!-- 可以添加更多选项 -->
+        <div class="option-item" @click="onClickAddCircle">
+          <div class="icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M14 2V8H20" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M16 13H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 17H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+              <path d="M10 9H9H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span>文件</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { Toast } from 'tdesign-mobile-vue'
 import { ref, reactive, onMounted, defineEmits } from 'vue'
@@ -173,116 +283,6 @@ defineExpose({
   HandleClearMessage,
 })
 </script>
-
-<template>
-  <div class="intr_wrap">
-    <!-- 选中的图片预览 -->
-    <div class="top" v-if="datas.image">
-      <div class="list">
-        <div class="close" @click="closeimage" title="移除图片"></div>
-        <img :src="datas.image" :alt="`预览图: ${datas.image.split('/').pop()}`" />
-      </div>
-    </div>
-
-    <!-- 主输入区域 -->
-    <div class="info-entry-box flex flex-col gap-2" :class="{ active: moreBlockState }">
-      <div class="flex w-full gap-2 items-center" :class="datas.row > 0 ? 'items-end' : ''">
-        <!-- 切换按钮 -->
-        <div class="navigation">
-          <div class="keyboard" v-if="status === 2" @click="status = 1" title="切换到文字输入"></div>
-          <div class="audit_btn" v-if="status === 1" @click="status = 2" title="切换到语音输入"></div>
-        </div>
-
-        <!-- 文字输入区域 -->
-        <div class="text_wrap" :class="'input' + datas.row" v-if="status === 1">
-          <textarea
-              class="input_message"
-              @input="HandleChange"
-              v-model="datas.message"
-              placeholder="输入消息..."
-              @keydown="HandleSendMessage"
-              @keyup="HandleIsShowModel"
-              @focus="moreBlockState = false"
-          ></textarea>
-        </div>
-
-        <!-- 语音输入区域 -->
-        <div class="flex-1 flex voice-wrap" v-if="status === 2">
-          <t-button class="voice-button" shape="round">
-            按住说话
-          </t-button>
-          <div
-              class="wraps"
-              @touchstart="HandleShowAudit"
-              @touchmove="HandleAudioMove"
-              @touchend="HandleAudioEnd"
-              @mousedown="HandleShowAudit"
-              @mouseup="HandleAudioEnd"
-              @mousemove="HandleAudioMove"
-          ></div>
-        </div>
-
-        <!-- 发送按钮/更多选项 -->
-        <div class="more_child">
-          <div
-              class="add-btn"
-              v-if="status === 1 && !datas.message"
-              @click="onClickAddCircle"
-              title="更多选项"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#646566" stroke-width="2"/>
-              <line x1="12" y1="6" x2="12" y2="18" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-              <line x1="6" y1="12" x2="18" y2="12" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-
-          <div
-              class="send-btn"
-              v-if="status === 1 && datas.message"
-              @click="HandleSendMessage"
-              title="发送消息"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22 2L11 13L2 2L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M22 2L15 22L11 13L22 2Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <!-- 更多选项区域 -->
-      <div class="more-options" v-if="moreBlockState">
-        <div class="option-item" @click="onClickAddCircle">
-          <input type="file" class="upload" @change="getFile" accept="image/*" />
-          <div class="icon-wrap">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#646566" stroke-width="2"/>
-              <circle cx="12" cy="10" r="3" stroke="#646566" stroke-width="2"/>
-              <path d="M12 14V17" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-              <path d="M15 16H9" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span>图片</span>
-        </div>
-
-        <!-- 可以添加更多选项 -->
-        <div class="option-item" @click="onClickAddCircle">
-          <div class="icon-wrap">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M14 2V8H20" stroke="#646566" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M16 13H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-              <path d="M16 17H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-              <path d="M10 9H9H8" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <span>文件</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
 
 <style lang="scss" scoped>
 // 基础样式变量

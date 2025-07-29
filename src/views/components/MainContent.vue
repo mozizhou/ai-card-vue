@@ -37,19 +37,19 @@
         style="scroll-behavior: smooth; padding-right: 8px;"
     >
       <template v-if="user">
-        <div class="space-y-4 pb-24">
+        <div class="space-y-6 pb-24">
           <!-- 消息项 -->
           <div
               v-for="(e, index) in messageList"
               :key="e.id"
-              class="flex items-start"
+              class="flex items-start message-item"
               :class="{
               'justify-start': e.type === 'start',
               'justify-end': e.type === 'end'
             }"
           >
             <!-- 左侧头像（AI） -->
-            <div v-if="e.type === 'start'" class="mr-1 mt-1 flex-shrink-0">
+            <div v-if="e.type === 'start'" class="mr-3 mt-1 flex-shrink-0 z-10">
               <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-white/80 shadow-sm">
                 <img
                     v-if="user"
@@ -61,22 +61,18 @@
               </div>
             </div>
 
-            <!-- 消息内容气泡容器 - 包含气泡和突起 -->
-            <div :class="{
-              'flex items-center': true,
-              'pl-2': e.type === 'start',  // 左侧突起预留空间
-              'pr-2': e.type === 'end'     // 右侧突起预留空间
-            }">
-              <!-- 消息内容气泡 -->
+            <!-- 消息内容气泡容器 -->
+            <div class="flex items-center">
+              <!-- 消息内容气泡 - 带透明效果的微信风格 -->
               <div
-                  class="max-w-[80%] px-4 py-3 rounded-2xl shadow-md relative transition-all duration-200"
+                  class="max-w-[80%] px-4 py-2.5 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200"
                   :class="{
-                  'bg-white/70 backdrop-blur-sm': e.type === 'start',
-                  'bg-green-500/80 backdrop-blur-sm text-white': e.type === 'end',
+                  'bg-white/90 rounded-tl-none': e.type === 'start',
+                  'bg-[#95EC69]/90 text-white rounded-tr-none': e.type === 'end',
                   'hover:shadow-lg': true
                 }"
               >
-                <p class="m-0">{{ e.content }}</p>
+                <p class="m-0 text-sm leading-relaxed">{{ e.content }}</p>
 
                 <!-- 语音播放按钮 -->
                 <div
@@ -99,8 +95,8 @@
             </div>
 
             <!-- 右侧头像（用户） -->
-            <div v-if="e.type === 'end'" class="ml-1 mt-1 flex-shrink-0">
-              <div class="w-10 h-10 rounded-full bg-green-500/80 flex items-center justify-center border-2 border-white/80 shadow-sm">
+            <div v-if="e.type === 'end'" class="ml-3 mt-1 flex-shrink-0 z-10">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-r from-green-500/80 to-green-600/80 flex items-center justify-center border-2 border-white/80 shadow-sm">
                 <UserOutlined class="text-white" />
               </div>
             </div>
@@ -129,6 +125,7 @@
 </template>
 
 <script setup lang="ts">
+// 脚本部分保持不变
 import { ref, watch, onMounted, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { UserOutlined, LoadingOutlined } from '@ant-design/icons-vue';
@@ -154,6 +151,8 @@ const token = ref('');
 const contentHeight = ref('calc(100vh - 120px)');
 const audio = ref<HTMLAudioElement | null>(null);
 const mainRef = ref<HTMLElement | null>(null);
+// 添加标记防止循环更新
+const isUpdating = ref(false);
 
 // 路由和状态
 const router = useRouter();
@@ -164,30 +163,49 @@ const setMessageData = (data: any) => store.setMessageData(data);
 
 // 处理消息数据更新
 const handleSetMessageData = (message: Message[]) => {
-  if (!user.value) return;
-  const index = messageData.value.findIndex((e: any) => e.name === user.value.name);
-  const newMessageData = [...messageData.value];
-  if (index === -1) {
-    newMessageData.push({
-      name: user.value.name,
-      message,
-    });
-  } else {
-    newMessageData[index] = {
-      name: user.value.name,
-      message,
-    };
+  // 防止递归更新
+  if (isUpdating.value || !user.value) return;
+
+  isUpdating.value = true;
+  try {
+    const index = messageData.value.findIndex((e: any) => e.name === user.value.name);
+    const newMessageData = [...messageData.value];
+    if (index === -1) {
+      newMessageData.push({
+        name: user.value.name,
+        message,
+      });
+    } else {
+      // 仅在数据不同时更新
+      if (JSON.stringify(newMessageData[index].message) !== JSON.stringify(message)) {
+        newMessageData[index] = {
+          name: user.value.name,
+          message,
+        };
+      } else {
+        return; // 数据相同则不更新
+      }
+    }
+    setMessageData(newMessageData);
+  } finally {
+    isUpdating.value = false;
   }
-  setMessageData(newMessageData);
 };
 
-// 滚动到消息底部
+// 优化滚动到底部的实现
 const scrollToBottom = () => {
-  setTimeout(() => {
+  // 使用nextTick确保DOM已更新
+  nextTick(() => {
     if (messageContainer.value) {
-      messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+      // 避免重复设置相同的值
+      const currentScrollTop = messageContainer.value.scrollTop;
+      const targetScrollTop = messageContainer.value.scrollHeight - messageContainer.value.clientHeight;
+
+      if (Math.abs(currentScrollTop - targetScrollTop) > 1) {
+        messageContainer.value.scrollTop = targetScrollTop;
+      }
     }
-  }, 0);
+  });
 };
 
 // 初始化 token
@@ -202,11 +220,15 @@ onMounted(() => {
   }
 });
 
-// 监听用户和消息数据变化
+// 优化watch监听，防止循环触发
 watch([user, messageData], () => {
-  if (user.value) {
+  if (isUpdating.value || !user.value) return;
+
+  isUpdating.value = true;
+  try {
     const msg = messageData.value.find((e: any) => e.name === user.value.name);
     let msgList: Message[] = [];
+
     if (!msg || msg.message.length === 0) {
       msgList = [
         {
@@ -220,11 +242,17 @@ watch([user, messageData], () => {
     } else {
       msgList = msg.message || [];
     }
-    messageList.value = msgList;
-    handleSetMessageData(msgList);
-    scrollToBottom();
+
+    // 仅在消息列表不同时更新
+    if (JSON.stringify(messageList.value) !== JSON.stringify(msgList)) {
+      messageList.value = msgList;
+      handleSetMessageData(msgList);
+      scrollToBottom();
+    }
+  } finally {
+    isUpdating.value = false;
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 // 调整内容区域高度
 watch(() => props.directMode, (newVal) => {
@@ -233,76 +261,83 @@ watch(() => props.directMode, (newVal) => {
       : 'calc(100vh - 120px)';
 }, { immediate: true });
 
-// 语音播放控制
-const togglePlay = (e: Message, index: number) => {
-  messageList.value = messageList.value.map(data =>
-      data.id === e.id ? { ...data, voiceType: 1 } : data
-  );
-
+// 优化语音播放控制，减少状态更新
+const togglePlay = async (e: Message, index: number) => {
+  // 先暂停当前播放
   if (audio.value) {
     audio.value.pause();
-    messageList.value = messageList.value.map(ele => ({
-      ...ele,
-      voiceType: ele.id === e.id ? 1 : 0
-    }));
   }
 
-  fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      user_name: token.value,
-      text: e.content,
-      id: user.value?.id,
-      direct_mode: props.directMode,
-    }),
-  })
-      .then(async (res) => {
-        const audioBlob = await res.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        audio.value = new Audio(audioUrl);
-        await audio.value.play();
+  // 一次性更新所有消息的语音状态
+  messageList.value = messageList.value.map(data => {
+    if (data.id === e.id) {
+      return { ...data, voiceType: 1 };
+    }
+    // 只重置正在播放的状态，避免不必要的更新
+    if (data.voiceType === 2) {
+      return { ...data, voiceType: 0 };
+    }
+    return data;
+  });
 
-        messageList.value = messageList.value.map(data =>
-            data.id === e.id ? { ...data, voiceType: 2 } : data
-        );
+  try {
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_name: token.value,
+        text: e.content,
+        id: user.value?.id,
+        direct_mode: props.directMode,
+      }),
+    });
 
-        audio.value.addEventListener('ended', () => {
-          messageList.value = messageList.value.map(data =>
-              data.id === e.id ? { ...data, voiceType: 0 } : data
-          );
-        });
-      })
-      .catch(console.error);
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    audio.value = new Audio(audioUrl);
+    await audio.value.play();
+
+    // 更新为播放状态
+    messageList.value = messageList.value.map(data =>
+        data.id === e.id ? { ...data, voiceType: 2 } : data
+    );
+
+    audio.value.addEventListener('ended', () => {
+      // 播放结束后更新状态
+      messageList.value = messageList.value.map(data =>
+          data.id === e.id ? { ...data, voiceType: 0 } : data
+      );
+    });
+  } catch (error) {
+    console.error('语音播放失败:', error);
+    // 出错时重置状态
+    messageList.value = messageList.value.map(data =>
+        data.id === e.id ? { ...data, voiceType: 0 } : data
+    );
+  }
 };
 
-// 发送消息处理
+// 优化发送消息处理
 const handleSendMessage = async () => {
   if (!value.value.trim()) return;
 
   loading.value = true;
 
-  // 生成新消息ID
-  const id = messageList.value.length === 0
-      ? 1
-      : messageList.value[messageList.value.length - 1].id + 1;
+  try {
+    // 生成新消息ID
+    const id = messageList.value.length === 0
+        ? 1
+        : messageList.value[messageList.value.length - 1].id + 1;
 
-  // 添加用户消息
-  messageList.value = [
-    ...messageList.value,
-    { id, type: "end", content: value.value, role: "user" }
-  ];
+    // 添加用户消息
+    const newUserMessage = { id, type: "end", content: value.value, role: "user", voiceType: 0 };
+    messageList.value = [...messageList.value, newUserMessage];
 
-  // 清空输入框
-  value.value = '';
+    // 清空输入框
+    value.value = '';
 
-  // 滚动到底部
-  await nextTick();
-  messageContainer.value?.scrollTo({ key: 0, block: "nearest" });
-
-  // 直接发送请求
-  if (user.value) {
-    try {
+    // 直接发送请求
+    if (user.value) {
       // 准备消息数据
       const ary = messageList.value.map(e => ({
         role: e.role,
@@ -328,19 +363,19 @@ const handleSendMessage = async () => {
       // 添加AI回复
       const newMessageList = [
         ...messageList.value,
-        {id: aiId, type: "start", content: data.content, role: data.role}];
+        {id: aiId, type: "start", content: data.content, role: data.role, voiceType: 0}
+      ];
+
       messageList.value = newMessageList;
       handleSetMessageData(newMessageList);
 
       // 滚动到底部
-      nextTick(() => {
-        scrollToBottom()
-      });
-    } catch (err) {
-      console.error('聊天请求失败:', err);
-    } finally {
-      loading.value = false;
+      scrollToBottom();
     }
+  } catch (err) {
+    console.error('聊天请求失败:', err);
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -374,40 +409,19 @@ const message = antMessage;
   background-color: rgba(156, 163, 175, 0.8);
 }
 
-/* 聊天气泡样式 - 关键修改：使用伪元素实现与气泡一体化的突起 */
-.max-w-[80%] {
+/* 微信风格气泡样式 - 带透明效果 */
+.rounded-tl-none {
+  border-top-left-radius: 4px !important;
+}
+
+.rounded-tr-none {
+  border-top-right-radius: 4px !important;
+}
+
+/* 消息项布局优化 */
+.message-item {
   position: relative;
-  transition: transform 0.15s ease, box-shadow 0.2s ease;
-}
-
-/* AI消息气泡 - 左侧突起 */
-.bg-white\/70.backdrop-blur-sm::before {
-  content: '';
-  position: absolute;
-  left: -8px;
-  top: 12px;
-  width: 16px;
-  height: 16px;
-  background-color: inherit;
-  border-radius: 0 0 0 4px;
-  transform: rotate(45deg);
-  box-shadow: -2px 2px 2px rgba(0, 0, 0, 0.02);
-  z-index: -1;
-}
-
-/* 用户消息气泡 - 右侧突起 */
-.bg-green-500\/80.backdrop-blur-sm::before {
-  content: '';
-  position: absolute;
-  right: -8px;
-  top: 12px;
-  width: 16px;
-  height: 16px;
-  background-color: inherit;
-  border-radius: 0 0 4px 0;
-  transform: rotate(45deg);
-  box-shadow: 2px -2px 2px rgba(0, 0, 0, 0.02);
-  z-index: -1;
+  padding: 4px 0;
 }
 
 /* 移动端适配 */
@@ -421,30 +435,6 @@ const message = antMessage;
     padding-top: 12px;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
   }
-
-  .max-w-[80%] {
-  max-width: 85%;
-}
-
-  .max-w-[80%] p {
-  font-size: 14px;
-}
-
-  /* 移动端气泡突起微调 */
-  .bg-white\/70.backdrop-blur-sm::before,
-  .bg-green-500\/80.backdrop-blur-sm::before {
-    width: 12px;
-    height: 12px;
-    top: 10px;
-  }
-
-  .bg-white\/70.backdrop-blur-sm::before {
-    left: -6px;
-  }
-
-  .bg-green-500\/80.backdrop-blur-sm::before {
-    right: -6px;
-  }
 }
 
 /* 平板及桌面端样式 */
@@ -452,15 +442,11 @@ const message = antMessage;
   .input-container {
     padding-bottom: 73px;
   }
-
-  .max-w-[80%] {
-  max-width: 70%;
-}
 }
 
 /* 消息项间距 */
-.space-y-4 > div {
-  margin-bottom: 1rem;
+.space-y-6 > div {
+  margin-bottom: 1.5rem;
 }
 
 /* 确保输入容器始终在底部 */
