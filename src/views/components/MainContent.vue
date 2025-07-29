@@ -65,14 +65,14 @@
             <div class="flex items-center">
               <!-- 消息内容气泡 - 带透明效果的微信风格 -->
               <div
-                  class="max-w-[80%] px-4 py-2.5 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200"
+                  class="max-w-[80%] px-4 py-2.5 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-all duration-200 break-words"
                   :class="{
                   'bg-white/90 rounded-tl-none': e.type === 'start',
                   'bg-[#95EC69]/90 text-white rounded-tr-none': e.type === 'end',
                   'hover:shadow-lg': true
                 }"
               >
-                <p class="m-0 text-sm leading-relaxed">{{ e.content }}</p>
+                <p class="m-0 text-sm leading-relaxed whitespace-pre-wrap">{{ e.content }}</p>
 
                 <!-- 语音播放按钮 -->
                 <div
@@ -115,11 +115,9 @@
       <InfoEntryBox
           class="w-full"
           ref="infoEntry"
-          v-model="value"
           :loading="loading"
-          @send="handleSendMessage"
           @cancel="handleCancel"
-      />
+          :handle-send-message="handleSendMessage"/>
     </div>
   </div>
 </template>
@@ -318,11 +316,10 @@ const togglePlay = async (e: Message, index: number) => {
 };
 
 // 优化发送消息处理
-const handleSendMessage = async () => {
-  if (!value.value.trim()) return;
+const handleSendMessage = async (date) => {
+  if (!date.trim()) return;
 
   loading.value = true;
-
   try {
     // 生成新消息ID
     const id = messageList.value.length === 0
@@ -330,11 +327,8 @@ const handleSendMessage = async () => {
         : messageList.value[messageList.value.length - 1].id + 1;
 
     // 添加用户消息
-    const newUserMessage = { id, type: "end", content: value.value, role: "user", voiceType: 0 };
+    const newUserMessage = { id, type: "end", content: date, role: "user", voiceType: 0 };
     messageList.value = [...messageList.value, newUserMessage];
-
-    // 清空输入框
-    value.value = '';
 
     // 直接发送请求
     if (user.value) {
@@ -410,6 +404,11 @@ const message = antMessage;
 }
 
 /* 微信风格气泡样式 - 带透明效果 */
+.max-w-[80%] {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
 .rounded-tl-none {
   border-top-left-radius: 4px !important;
 }

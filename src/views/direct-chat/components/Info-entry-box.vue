@@ -24,7 +24,6 @@
               @input="HandleChange"
               v-model="datas.message"
               placeholder="输入消息..."
-              @keydown="HandleSendMessage"
               @keyup="HandleIsShowModel"
               @focus="moreBlockState = false"
           ></textarea>
@@ -110,10 +109,19 @@
 
 <script setup>
 import { Toast } from 'tdesign-mobile-vue'
-import { ref, reactive, onMounted, defineEmits } from 'vue'
+import { ref, reactive, onMounted, defineEmits, defineProps } from 'vue'
 import Recorder from 'js-audio-recorder'
 import { useSystemStore } from '@/store/system'
 import { useMenuStore } from '@/store/menu'
+
+// 定义接收的props，包含handleSendMessage方法
+const props = defineProps({
+  handleSendMessage: {
+    type: Function,
+    required: true,
+    description: '用于处理消息发送的回调方法'
+  }
+})
 
 const ststemStore = useSystemStore()
 const menuStore = useMenuStore()
@@ -133,6 +141,7 @@ const emits = defineEmits([
   'HandEmitMessage',
   'HandleCloseStyle',
   'HandleShowSelectModel',
+  'HandleAudioEnd'
 ])
 
 onMounted(() => {
@@ -175,6 +184,7 @@ const HandleShowAudit = () => {
 
 const HandleSendMessage = (event) => {
   // 支持Enter发送和按钮点击发送
+  console.log(event)
   if (event.key === 'Enter' || !event.key) {
     if (localStorage.getItem('isAnonymous')) {
       menuStore.HandleShowLogin(true)
@@ -187,7 +197,8 @@ const HandleSendMessage = (event) => {
     if (!datas.message.trim()) return
 
     datas.row = 0
-    emits('HandEmitMessage', datas.image ? `![](${datas.image})${datas.message}` : datas.message)
+    // 使用传入的handleSendMessage方法处理消息发送
+    props.handleSendMessage(datas.message)
 
     // 发送后清空并添加反馈动画
     datas.message = ''
