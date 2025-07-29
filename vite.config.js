@@ -11,12 +11,14 @@ export default defineConfig({
     vueDevTools(),
   ],
   server: {
+    host: '0.0.0.0',
+    port: 80,
     proxy: {
       // 配置 API 代理
       '/api': {
         target: 'http://47.99.131.58:3000', // 替换为实际的 API 域名
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, 'api'),
         // 如需使用 HTTPS，可添加以下配置
         // secure: false,
         // 如需处理 WebSocket
