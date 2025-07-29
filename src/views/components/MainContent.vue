@@ -5,163 +5,240 @@
       <img
           :src="user?.background || 'http://47.99.131.58:8000/photo?idx=1&image_type=background'"
           alt="Background"
-          class="w-full h-full object-cover"
+          class="absolute inset-0 w-full h-full object-cover"
       />
     </div>
 
-    <!-- 半透明遮罩层 -->
+    <!-- 半透明遮罩 -->
     <div class="absolute inset-0 bg-black/5 z-[-1]"></div>
 
     <!-- 直接聊天模式标题栏 -->
     <div v-if="directMode && user" class="w-full p-3 flex items-center justify-center z-10">
       <div class="px-6 py-2 bg-white/30 backdrop-blur-md rounded-full shadow-lg">
-        <h3 class="text-center text-[1.5rem] font-bold text-[#1a1a1a] m-0 text-shadow-[0px_1px_2px_rgba(0,0,0,0.3),0px_0px_4px_rgba(255,255,255,0.7)]">
+        <h3
+            style="
+            margin: 0;
+            text-align: center;
+            text-shadow: 0px 1px 2px rgba(0,0,0,0.3), 0px 0px 4px rgba(255,255,255,0.7);
+            font-weight: bold;
+            color: #1a1a1a;
+            font-size: 1.5rem;
+          "
+        >
           {{ user.name }}
         </h3>
       </div>
     </div>
 
-    <!-- 内容区域 -->
     <div
         class="flex-1 p-4 flex flex-col justify-between relative overflow-hidden"
         :style="{ height: contentHeight }"
     >
-      <div class="flex-1 overflow-y-auto mb-2">
-        <Bubble
-            ref="mainRef"
-            :roles="rolesAsObject"
-            :items="messageList"
-        />
+      <!-- 消息列表区域 - 核心滚动容器 -->
+      <div
+          class="flex-1 overflow-y-auto mb--2 custom-scrollbar"
+          ref="messageContainer"
+          style="scroll-behavior: smooth; padding-right: 8px;"
+      >
+        <template v-if="user">
+          <div class="space-y-4 pb-8"> <!-- 底部留白避免最后一条被输入框遮挡 -->
+            <!-- 消息项 -->
+            <div
+                v-for="(e, index) in messageList"
+                :key="e.id"
+                class="flex"
+                :class="{
+                'justify-start': e.type === 'start',
+                'justify-end': e.type === 'end'
+              }"
+            >
+              <!-- 头像区域 -->
+              <div v-if="e.type === 'start'" class="mr-2 mt-1">
+                <div class="w-10 h-10 rounded-full overflow-hidden">
+                  <img
+                      v-if="user"
+                      class="w-full h-full object-cover"
+                      :src="user.avatar"
+                      alt="AI Avatar"
+                  />
+                  <UserOutlined v-else class="w-full h-full" />
+                </div>
+              </div>
+
+              <!-- 消息内容气泡 -->
+              <div
+                  class="max-w-[80%] px-4 py-3 rounded-2xl shadow-md"
+                  :class="{
+                  'bg-white/90': e.type === 'start',
+                  'bg-green-500 text-white': e.type === 'end'
+                }"
+              >
+                <p class="m-0">{{ e.content }}</p>
+
+                <!-- 语音播放按钮 -->
+                <div
+                    v-if="e.type === 'start'"
+                    class="mt-2 flex items-center cursor-pointer"
+                    @click="togglePlay(e, index)"
+                >
+                  <template v-if="e.voiceType === 1">
+                    <LoadingOutlined style="fontSize: 16px" />
+                  </template>
+                  <template v-else-if="e.voiceType === 2">
+                    <img src="/playing.gif" alt="Playing" width="16" height="16" />
+                  </template>
+                  <template v-else>
+                    <img src="/stop.png" alt="Stop" width="16" height="16" />
+                  </template>
+                </div>
+              </div>
+
+              <!-- 用户头像 -->
+              <div v-if="e.type === 'end'" class="ml-2 mt-1">
+                <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                  <UserOutlined class="text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- 未选择角色提示 -->
+        <div v-else class="flex-1 flex items-center justify-center">
+          <p class="text-lg">请选择角色</p>
+        </div>
       </div>
 
       <!-- 输入区域 -->
-      <div class="mt-4">
-        <Input
-            v-model="value"
-            placeholder="输入消息..."
-            :loading="loading"
-            @keyup.enter="handleSendMessage"
-        />
-        <Button
-            type="primary"
-            class="mt-2 w-full"
-            @click="handleSendMessage"
-            :loading="loading"
-        >
-          发送
-        </Button>
-      </div>
+      <InfoEntryBox
+          class="allbtn"
+          ref="infoEntry"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, nextTick } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Input, message as antMessage } from 'ant-design-vue';
-import { UserOutlined } from '@ant-design/icons-vue';
-import { Bubble } from '@ant-design/x';
-import { useMainStore } from '@/store/store'; // 假设Pinia store路径
-import { Message, User, MessageData } from '@/types';
-// import { useMobileAudio } from '@/hooks/useMobileAudio';
+import { UserOutlined, LoadingOutlined } from '@ant-design/icons-vue';
+import { message as antMessage } from 'ant-design-vue';
+import { useMainStore } from '@/store/store';
+import type { Message } from '@/types';
+import InfoEntryBox from "@/views/direct-chat/components/Info-entry-box.vue";
 
-// 定义组件props
-const props = defineProps<{
+// Props 定义
+interface MainContentProps {
   directMode?: boolean;
-}>();
+}
+const props = withDefaults(defineProps<MainContentProps>(), {
+  directMode: false
+});
 
 // 状态管理
+const value = ref('');
+const messageList = ref<Message[]>([]);
+const messageContainer = ref<HTMLDivElement | null>(null);
+const loading = ref(false);
+const token = ref('');
+const contentHeight = ref('calc(100vh - 120px)');
+const audio = ref<HTMLAudioElement | null>(null);
+
+// 路由和状态
+const router = useRouter();
 const store = useMainStore();
 const user = computed(() => store.user);
 const messageData = computed(() => store.messageData);
-const setMessageData = store.setMessageData;
+const setMessageData = (data: any) => store.setMessageData(data);
 
-// 响应式变量
-const value = ref('');
-const messageList = ref<Message[]>([]);
-const currentPlayingId = ref<number | null>(null);
-const mainRef = ref<typeof Bubble | null>(null);
-const token = ref('');
-const contentHeight = ref('calc(100vh - 120px)');
-const loading = ref(false);
-
-// 路由实例
-const router = useRouter();
-
-// 角色配置
-const rolesAsObject = {
-  ai: {
-    placement: 'start',
-    avatar: { icon: UserOutlined },
-    typing: { step: 5, interval: 20 },
-    style: {
-      maxWidth: 500,
-    },
-  },
-  user: {
-    placement: 'end',
-    avatar: { icon: UserOutlined, style: { background: '#87d068' } },
-  },
+// 处理消息数据更新（提前定义，避免初始化顺序问题）
+const handleSetMessageData = (message: Message[]) => {
+  if (!user.value) return;
+  const index = messageData.value.findIndex((e: any) => e.name === user.value.name);
+  const newMessageData = [...messageData.value];
+  if (index === -1) {
+    newMessageData.push({
+      name: user.value.name,
+      message,
+    });
+  } else {
+    newMessageData[index] = {
+      name: user.value.name,
+      message,
+    };
+  }
+  setMessageData(newMessageData);
 };
 
-// 音频播放逻辑
-const { playAudio, stopAudio, isPlaying, error: audioError } = useMobileAudio({
-  retryAttempts: 3,
-  retryDelay: 800,
-  onPlayStart: () => {
-    console.log('音频开始播放');
-  },
-  onPlayEnd: () => {
-    console.log('音频播放结束');
-    messageList.value = messageList.value.map(data =>
-        data.id === currentPlayingId.value ? { ...data, voiceType: 0 } : data
-    );
-    currentPlayingId.value = null;
-  },
-  onPlayError: (err) => {
-    console.error('音频播放失败:', err);
-    messageList.value = messageList.value.map(data =>
-        data.id === currentPlayingId.value ? { ...data, voiceType: 0 } : data
-    );
-    currentPlayingId.value = null;
+// 滚动到消息底部
+const scrollToBottom = () => {
+  // 使用 setTimeout 确保在 DOM 更新后执行
+  setTimeout(() => {
+    if (messageContainer.value) {
+      // 平滑滚动到底部
+      messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+    }
+  }, 0);
+};
+
+// 初始化 token
+onMounted(() => {
+  const storedToken = localStorage.getItem('token');
+  if (storedToken) {
+    token.value = storedToken;
+  } else if (!props.directMode) {
+    router.push('/login');
+  } else {
+    token.value = 'direct_chat_user';
   }
 });
 
-// 处理音频播放切换
-const togglePlay = (e: Message) => {
-  // 停止当前播放
-  if (currentPlayingId.value === e.id) {
-    stopAudio();
-    messageList.value = messageList.value.map(data =>
-        data.id === e.id ? { ...data, voiceType: 0 } : data
-    );
-    currentPlayingId.value = null;
-    return;
+// 监听用户和消息数据变化
+watch([user, messageData], () => {
+  if (user.value) {
+    loading.value = false;
+    const msg = messageData.value.find((e: any) => e.name === user.value.name);
+    let msgList: Message[] = [];
+    if (!msg || msg.message.length === 0) {
+      msgList = [
+        {
+          id: user.value.id,
+          content: user.value.greeting,
+          type: 'start',
+          role: 'assistant',
+          voiceType: 0
+        },
+      ];
+    } else {
+      msgList = msg.message || [];
+    }
+    messageList.value = msgList;
+    handleSetMessageData(msgList);
+    scrollToBottom(); // 数据加载后滚动到底部
   }
+}, { immediate: true });
 
-  // 停止之前的播放
-  if (currentPlayingId.value !== null) {
-    stopAudio();
-    messageList.value = messageList.value.map(data =>
-        data.id === currentPlayingId.value ? { ...data, voiceType: 0 } : data
-    );
-  }
+// 调整内容区域高度
+watch(() => props.directMode, (newVal) => {
+  contentHeight.value = newVal
+      ? 'calc(100vh - 200px)'
+      : 'calc(100vh - 120px)';
+}, { immediate: true });
 
-  currentPlayingId.value = e.id;
+// 语音播放控制
+const togglePlay = (e: Message, index: number) => {
   messageList.value = messageList.value.map(data =>
       data.id === e.id ? { ...data, voiceType: 1 } : data
   );
 
-  // 30秒超时保护
-  const timeoutId = setTimeout(() => {
-    console.warn('音频播放超时，强制停止动画');
-    messageList.value = messageList.value.map(data =>
-        data.id === e.id ? { ...data, voiceType: 0 } : data
-    );
-    currentPlayingId.value = null;
-  }, 30000);
+  if (audio.value) {
+    audio.value.pause();
+    messageList.value = messageList.value.map(ele => ({
+      ...ele,
+      voiceType: ele.id === e.id ? 1 : 0
+    }));
+  }
 
-  // 请求并播放音频
   fetch('/api/tts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -171,108 +248,56 @@ const togglePlay = (e: Message) => {
       id: user.value?.id,
       direct_mode: props.directMode,
     }),
-  }).then(res => {
-    if (!res.ok) {
-      clearTimeout(timeoutId);
-      throw new Error(`TTS请求失败: ${res.status} ${res.statusText}`);
-    }
+  })
+      .then(async (res) => {
+        const audioBlob = await res.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audio.value = new Audio(audioUrl);
+        await audio.value.play();
 
-    // 更新为播放动画状态
-    messageList.value = messageList.value.map(data =>
-        data.id === e.id ? { ...data, voiceType: 2 } : data
-    );
+        messageList.value = messageList.value.map(data =>
+            data.id === e.id ? { ...data, voiceType: 2 } : data
+        );
 
-    return res.blob();
-  }).then(audioBlob => {
-    if (audioBlob.size === 0) {
-      clearTimeout(timeoutId);
-      throw new Error('接收到空的音频数据');
-    }
-
-    // 显示音频大小信息
-    const audioSizeKB = (audioBlob.size / 1024).toFixed(2);
-    const audioSizeMB = (audioBlob.size / (1024 * 1024)).toFixed(2);
-    const sizeText = audioBlob.size > 1024 * 1024
-        ? `${audioSizeMB} MB`
-        : `${audioSizeKB} KB`;
-
-    antMessage.info(`音频接收完成，大小: ${sizeText}`, 2);
-
-    const audioUrl = URL.createObjectURL(audioBlob);
-
-    return playAudio(audioUrl).then(success => {
-      clearTimeout(timeoutId);
-
-      // 清理URL对象
-      setTimeout(() => {
-        URL.revokeObjectURL(audioUrl);
-      }, 1000);
-
-      if (!success) {
-        throw new Error('音频播放失败');
-      }
-    });
-  }).catch(error => {
-    console.error('TTS请求失败:', error);
-    clearTimeout(timeoutId);
-    messageList.value = messageList.value.map(data =>
-        data.id === e.id ? { ...data, voiceType: 0 } : data
-    );
-    currentPlayingId.value = null;
-  });
+        audio.value.addEventListener('ended', () => {
+          messageList.value = messageList.value.map(data =>
+              data.id === e.id ? { ...data, voiceType: 0 } : data
+          );
+        });
+      })
+      .catch(console.error);
 };
 
-// 处理发送消息
+// 发送消息处理
 const handleSendMessage = async () => {
   if (!value.value.trim()) return;
 
   loading.value = true;
-
-  // 生成新消息ID
   const id = messageList.value.length === 0
       ? 1
       : messageList.value[messageList.value.length - 1].id + 1;
 
-  // 添加用户消息
-  messageList.value = [
-    ...messageList.value,
-    { id, type: "end", content: value.value, role: "user" }
-  ];
-
-  // 清空输入框
+  messageList.value.push({
+    id,
+    type: 'end',
+    content: value.value,
+    role: 'user',
+    voiceType: 0
+  });
   value.value = '';
 
-  // 滚动到底部
-  await nextTick();
-  mainRef.value?.scrollTo({ key: 0, block: "nearest" });
+  scrollToBottom();
 };
 
-// 处理消息数据更新
-const handleSetMessageData = (message: Message[]) => {
-  if (!user.value) return;
-
-  const index = messageData.value.findIndex(e => e.name === user.value?.name);
-  const updatedData = [...messageData.value];
-
-  if (index === -1) {
-    updatedData.push({
-      name: user.value.name,
-      message
-    });
-  } else {
-    updatedData[index] = {
-      name: user.value.name,
-      message
-    };
-  }
-
-  setMessageData(updatedData);
+// 取消发送
+const handleCancel = () => {
+  loading.value = false;
+  antMessage.error('取消发送!');
 };
 
-// 监听loading状态发送请求
+// 监听 loading 状态发送请求
 watch(loading, (newVal) => {
   if (newVal && user.value) {
-    // 准备消息数据
     const ary = messageList.value.map(e => ({
       role: e.role,
       content: e.content
@@ -289,86 +314,63 @@ watch(loading, (newVal) => {
       }),
     })
         .then(res => res.json())
-        .then(data => {
+        .then((data) => {
           loading.value = false;
-
-          // 生成AI消息ID
           const id = messageList.value.length === 0
               ? 1
               : messageList.value[messageList.value.length - 1].id + 1;
 
-          // 添加AI回复
-          const newMessageList = [
-            ...messageList.value,
-            { id, type: "start", content: data.content, role: data.role }
-          ];
+          const newMessage: Message = {
+            id,
+            type: 'start',
+            content: data.content,
+            role: data.role,
+            voiceType: 0
+          };
 
-          messageList.value = newMessageList;
-          handleSetMessageData(newMessageList);
-
-          // 滚动到底部
-          nextTick(() => {
-            mainRef.value?.scrollTo({ key: 0, block: "nearest" });
-          });
+          messageList.value.push(newMessage);
+          handleSetMessageData(messageList.value);
+          scrollToBottom();
         })
-        .catch(err => {
-          console.error('聊天请求失败:', err);
+        .catch(() => {
           loading.value = false;
         });
   }
 });
 
-// 初始化token
-onMounted(() => {
-  // 处理token
-  const storedToken = localStorage.getItem('token');
-  if (storedToken) {
-    token.value = storedToken;
-  } else if (!props.directMode) {
-    router.push('/login');
-  } else {
-    token.value = 'direct_chat_user';
-  }
-
-  // 调整内容高度
-  if (props.directMode) {
-    contentHeight.value = 'calc(100vh - 160px)';
-  }
-});
-
-// 监听用户变化加载消息
-watch(user, (newUser) => {
-  if (newUser) {
-    loading.value = false;
-    const msg = messageData.value.find(e => e.name === newUser.name);
-    let msgList: Message[] = [];
-
-    if (!msg || msg.message.length === 0) {
-      msgList = [
-        {
-          id: newUser.id,
-          content: newUser.greeting,
-          type: "start",
-          role: "assistant",
-        },
-      ];
-    } else {
-      msgList = msg.message || [];
-    }
-
-    messageList.value = msgList;
-    handleSetMessageData(msgList);
-  }
-});
-
-// 监听directMode变化调整高度
-watch(() => props.directMode, (newVal) => {
-  contentHeight.value = newVal
-      ? 'calc(100vh - 160px)'
-      : 'calc(100vh - 120px)';
-});
+const message = antMessage;
 </script>
 
 <style scoped>
-/* 可根据需要添加组件样式 */
+/* 自定义滚动条样式 */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px; /* 滚动条宽度 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* 轨道透明 */
+  margin: 10px 0; /* 轨道上下留白 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5); /* 滑块颜色 */
+  border-radius: 3px; /* 滑块圆角 */
+  transition: background-color 0.2s ease; /* 过渡效果 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8); /*  hover 状态颜色 */
+}
+
+/* 移动端触摸滚动优化 */
+@media (max-width: 768px) {
+  .custom-scrollbar {
+    -webkit-overflow-scrolling: touch; /* 启用原生触摸滚动优化 */
+  }
+}
+
+/* 消息项间距 */
+.space-y-4 > div {
+  margin-bottom: 1rem;
+}
 </style>

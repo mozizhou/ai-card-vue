@@ -16,8 +16,11 @@
     "ant-design-vue": "^4.2.3",
     "antd": "^5.26.6",
     "howler": "^2.2.4",
+    "js-audio-recorder": "^1.0.7",
     "pinia": "^2.2.4",
+    "tdesign-mobile-vue": "^1.10.0",
     "vue": "^3.4.38",
+    "vue-i18n": "^11.1.11",
     "vue-router": "^4.4.3",
     "zustand": "^5.0.3"
   },
