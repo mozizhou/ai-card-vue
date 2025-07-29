@@ -5,7 +5,7 @@
         <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <i class="fa fa-comment text-xl"></i>
         </div>
-        <h1 class="text-xl font-bold">AI 聊天助手</h1>
+        <h1 class="text-xl font-bold">AI 聊天</h1>
       </div>
       <div class="flex items-center space-x-4">
         <button class="hover:text-gray-200 transition-colors">
