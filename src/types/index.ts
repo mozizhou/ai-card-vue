@@ -5,6 +5,7 @@ export interface Message {
   role: string;
   content: string;
   voiceType?: number;
+  isLoading?: boolean;
 }
 
 export interface MessageData {
