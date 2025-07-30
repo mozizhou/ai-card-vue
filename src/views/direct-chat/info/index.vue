@@ -62,7 +62,6 @@
 <script setup lang="ts">
 import {onMounted, ref} from 'vue';
 import {Card as ACard, List as AList, Button as AButton, CardMeta as ACardMeta} from 'ant-design-vue';
-import {useRouter} from 'vue-router';
 
 interface User {
   id: number;

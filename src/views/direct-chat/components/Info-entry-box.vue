@@ -65,7 +65,7 @@
 
           <div
               class="send-btn"
-              @click="HandleSendMessage"
+              @click="handleSendMessage"
               title="发送消息"
               :class="{ 'loading': isLoading }"
               :disabled="isLoading"
@@ -189,8 +189,7 @@ const HandleShowAudit = () => {
 }
 
 const handleSendMessage = async (event) => {
-  // 支持Enter发送和按钮点击发送
-  if ((event && event.key === 'Enter') || !event) {
+    // 支持Enter发送和按钮点击发送
     // 阻止回车键默认行为（如换行）
     event?.preventDefault();
 
@@ -230,7 +229,6 @@ const handleSendMessage = async (event) => {
       // 无论成功失败都关闭加载状态
       isLoading.value = false
     }
-  }
 }
 
 const HandleIsShowModel = (event) => {
