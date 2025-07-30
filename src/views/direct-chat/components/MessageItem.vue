@@ -40,7 +40,12 @@
         </template>
         <!-- 正常消息内容 -->
         <template v-else>
-          <p class="m-0 text-sm leading-relaxed">{{ message.content }}</p>
+          <p v-html="displayedContent" class="m-0 text-sm leading-relaxed"></p>
+          <div v-if="isTyping" class="typing-indicator">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
 
           <!-- 语音播放按钮 -->
           <div
@@ -74,8 +79,9 @@
 </template>
 
 <script setup lang="ts">
-import { UserOutlined, LoadingOutlined } from '@ant-design/icons-vue';
-import type { Message, User } from '@/types';
+import {defineProps, ref, onMounted, watch} from 'vue';
+import {UserOutlined, LoadingOutlined} from '@ant-design/icons-vue';
+import type {Message, User} from '@/types';
 
 const props = defineProps<{
   message: Message;
@@ -85,6 +91,56 @@ const props = defineProps<{
 defineEmits<{
   (e: 'toggle-play', message: Message): void;
 }>();
+
+// 打字机效果相关状态
+const displayedContent = ref('')
+const isTyping = ref(false)
+
+// 格式化时间
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString();
+};
+
+// 处理消息内容中的换行
+const processContent = (content: string) => {
+  return content.replace(/\n/g, '<br>');
+};
+
+// 打字机效果实现
+const startTyping = (content: string) => {
+  // 只对助手消息应用打字效果
+  if (props.message.role !== 'assistant') {
+    displayedContent.value = processContent(content);
+    return;
+  }
+
+  isTyping.value = true;
+  displayedContent.value = '';
+  const processedContent = processContent(content);
+  let index = 0;
+
+  const typingInterval = setInterval(() => {
+    if (index < processedContent.length) {
+      displayedContent.value += processedContent.charAt(index);
+      index++;
+    } else {
+      clearInterval(typingInterval);
+      isTyping.value = false;
+    }
+  }, 20); // 打字速度，数值越小越快
+};
+
+// 监听消息内容变化，重新开始打字效果
+watch(
+    () => props.message.content,
+    (newContent) => {
+      if (newContent) {
+        startTyping(newContent);
+      }
+    },
+    {immediate: true}
+);
 </script>
 
 <style scoped>
@@ -92,6 +148,9 @@ defineEmits<{
 .message-item {
   position: relative;
   padding: 4px 0;
+  display: flex;
+  margin-bottom: 16px;
+  align-items: flex-start;
 }
 
 /* 气泡样式调整 */
@@ -115,5 +174,52 @@ defineEmits<{
 
 .animate-bounce {
   animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.message-content p {
+  padding: 10px 14px;
+  border-radius: 18px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 不同角色的样式 */
+.message-item.assistant .message-content p {
+  background-color: #e9f5ff;
+}
+
+.message-item.user .message-content p {
+  background-color: #0078d4;
+  color: white;
+}
+
+
+/* 打字指示器样式 */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px;
+}
+
+.typing-indicator .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #666;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator .dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator .dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
 }
 </style>
