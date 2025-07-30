@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col h-screen">
-    <Header />
+    <Header v-if="!$route.meta.hideHeader" />
     <router-view class="flex-1 overflow-hidden" />
   </div>
 </template>

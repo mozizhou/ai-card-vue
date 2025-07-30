@@ -24,12 +24,14 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/boxing',
         name: 'Boxing',
-        component: () => import('@/views/boxing/index.vue')
+        component: () => import('@/views/boxing/index.vue'),
+        meta: { hideHeader: true }
     },
     {
         path: '/hotel-card',
         name: 'HotelCard',
-        component: () => import('@/views/hotel-card/index.vue')
+        component: () => import('@/views/hotel-card/index.vue'),
+        meta: { hideHeader: true }
     },
     {
         path: '/links',
