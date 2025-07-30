@@ -1,7 +1,7 @@
 <template>
   <div class="w-screen h-screen">
     <iframe
-        src="/index/index.html"
+        src="@/index/index.html"
         class="w-full h-full border-0"
         title="酒店房卡页面"
     />

@@ -12,10 +12,10 @@
     <div class="info-entry-box flex flex-col gap-2" :class="{ active: moreBlockState }">
       <div class="flex w-full gap-2 items-center" :class="datas.row > 0 ? 'items-end' : ''">
         <!-- 切换按钮 -->
-        <div class="navigation">
-          <div class="keyboard" v-if="status === 2" @click="status = 1" title="切换到文字输入"></div>
-          <div class="audit_btn" v-if="status === 1" @click="status = 2" title="切换到语音输入"></div>
-        </div>
+<!--        <div class="navigation">-->
+<!--          <div class="keyboard" v-if="status === 2" @click="status = 1" title="切换到文字输入"></div>-->
+<!--          <div class="audit_btn" v-if="status === 1" @click="status = 2" title="切换到语音输入"></div>-->
+<!--        </div>-->
 
         <!-- 文字输入区域 -->
         <div class="text_wrap" :class="'input' + datas.row" v-if="status === 1">
@@ -50,22 +50,21 @@
 
         <!-- 发送按钮/更多选项 -->
         <div class="more_child">
-          <div
-              class="add-btn"
-              v-if="status === 1 && !datas.message && !isLoading"
-              @click="onClickAddCircle"
-              title="更多选项"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="#646566" stroke-width="2"/>
-              <line x1="12" y1="6" x2="12" y2="18" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-              <line x1="6" y1="12" x2="18" y2="12" stroke="#646566" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-          </div>
+<!--          <div-->
+<!--              class="add-btn"-->
+<!--              v-if="status === 1 && !datas.message && !isLoading"-->
+<!--              @click="onClickAddCircle"-->
+<!--              title="更多选项"-->
+<!--          >-->
+<!--            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">-->
+<!--              <circle cx="12" cy="12" r="10" stroke="#646566" stroke-width="2"/>-->
+<!--              <line x1="12" y1="6" x2="12" y2="18" stroke="#646566" stroke-width="2" stroke-linecap="round"/>-->
+<!--              <line x1="6" y1="12" x2="18" y2="12" stroke="#646566" stroke-width="2" stroke-linecap="round"/>-->
+<!--            </svg>-->
+<!--          </div>-->
 
           <div
               class="send-btn"
-              v-if="status === 1 && datas.message"
               @click="HandleSendMessage"
               title="发送消息"
               :class="{ 'loading': isLoading }"

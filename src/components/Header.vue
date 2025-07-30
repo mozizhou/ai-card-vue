@@ -8,6 +8,7 @@
           <div class="left-section flex items-center gap-4">
             <!-- 移动端菜单按钮（仅在移动端显示） -->
             <button
+                style="display: none"
                 class="menu-toggle md:hidden"
                 @click.stop="toggleMenu"
                 aria-label="菜单"
@@ -38,13 +39,13 @@
           <!-- 右侧：功能区域 -->
           <div class="right-section flex items-center gap-4">
             <!-- 时间显示（PC端突出显示） -->
-            <div class="time-display">
+            <div class="time-display" style="margin-right: 20px">
               <span class="time-text">{{ currentTime }}</span>
             </div>
 
             <!-- 功能下拉框 -->
             <div class="dropdown-container" @click.outside="closeDropdown">
-              <button class="dropdown-trigger" @click.stop="toggleDropdown">
+              <button style="display: none" class="dropdown-trigger" @click.stop="toggleDropdown">
                 <i class="fa fa-ellipsis-v"></i>
               </button>
 
