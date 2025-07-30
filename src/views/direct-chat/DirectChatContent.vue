@@ -66,6 +66,7 @@ const handleGoToInfo = () => {
 
 // 初始化获取角色信息
 onMounted(() => {
+  console.log(route.params)
   if (!characterId.value) {
     error.value = '请在URL中指定角色ID';
     loading.value = false;

@@ -1,10 +1,4 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
-import DirectChat from '@/views/direct-chat/index.vue';
-import DirectChatInfo from '@/views/direct-chat/info/index.vue';
-import Boxing from '@/views/boxing/index.vue';
-import HotelCard from '@/views/hotel-card/index.vue';
-import Links from '@/views/links/index.vue';
-import Login from '@/views/login/index.vue';
 
 // 显式指定路由数组类型为 RouteRecordRaw[]
 const routes: RouteRecordRaw[] = [
@@ -14,31 +8,33 @@ const routes: RouteRecordRaw[] = [
     },
     {
         path: '/login',
-        component: Login  // 添加登录页路由
+        name: 'Home',
+        component: () => import('@/views/login/index.vue')
     },
     {
         path: '/direct-chat',
-        component: DirectChat
+        name: 'DirectChat',
+        component: () => import('@/views/direct-chat/index.vue')
     },
     {
         path: '/direct-chat/info',
-        component: DirectChatInfo
-    },
-    {
-        path: '/direct-chat/:id',
-        component: DirectChat
+        name: 'DirectChatInfo',
+        component: () => import('@/views/direct-chat/info/index.vue')
     },
     {
         path: '/boxing',
-        component: Boxing
+        name: 'Boxing',
+        component: () => import('@/views/boxing/index.vue')
     },
     {
         path: '/hotel-card',
-        component: HotelCard
+        name: 'HotelCard',
+        component: () => import('@/views/hotel-card/index.vue')
     },
     {
         path: '/links',
-        component: Links
+        name: 'Links',
+        component: () => import('@/views/links/index.vue')
     }
 ];
 
