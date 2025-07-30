@@ -3,10 +3,12 @@
     <div class="max-w-5xl mx-auto">
       <!-- 标题区域 -->
       <div class="text-center mb-10 md:mb-16 relative">
-        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full opacity-70"></div>
+        <div
+            class="absolute -top-6 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full opacity-70"></div>
         <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-gray-900 mb-4 relative inline-block">
           页面导航
-          <span class="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></span>
+          <span
+              class="absolute -bottom-2 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></span>
         </h1>
         <p class="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
           选择您想要访问的功能页面，快速导航至目标内容
@@ -27,7 +29,8 @@
                 <h2 class="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
                   {{ link.title }}
                 </h2>
-                <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                <span
+                    class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   ID: {{ index + 1 }}
                 </span>
               </div>
@@ -62,11 +65,28 @@
 </template>
 
 <script setup lang="ts">
-import { Button as AButton } from 'ant-design-vue';
-import { useRouter } from 'vue-router';
+import {Button as AButton} from 'ant-design-vue';
+import {useRouter} from 'vue-router';
+import {onMounted} from "vue";
+import {useMainStore} from "@/store/store";
+import {User} from "@/types";
 
 // 初始化路由
 const router = useRouter();
+const store = useMainStore();
+const setUser = store.setUser;
+
+onMounted(() => {
+  const user: User = {
+    id: undefined,
+    name: undefined,
+    greeting: undefined,
+    avatar: undefined,
+    background: undefined,
+    message: []
+  };
+  setUser(user)
+});
 
 // 链接列表数据
 const links = [
