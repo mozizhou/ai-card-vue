@@ -23,12 +23,13 @@
                     :alt="currentUser?.name || 'AI助手'"
                     class="avatar"
                 >
-                <span class="status-indicator" title="在线"></span>
+                <span v-if="currentUser?.name" class="status-indicator-login" title="在线"></span>
+                <span v-else class="status-indicator-unlogin" title="离线"></span>
               </div>
 
               <div class="role-name-container">
                 <p class="role-name">
-                  {{ currentUser?.name || '智能助手' }}
+                  {{ currentUser?.name || '未选择' }}
                 </p>
               </div>
             </div>
@@ -204,7 +205,7 @@ onMounted(() => {
   border: 1px solid #f0f4f8;
 }
 
-.status-indicator {
+.status-indicator-login {
   position: absolute;
   bottom: 0;
   right: 0;
@@ -212,6 +213,17 @@ onMounted(() => {
   height: 12px;
   border-radius: 50%;
   background-color: #36d399;
+  border: 2px solid white;
+}
+
+.status-indicator-unlogin {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: rgb(110, 100, 100);
   border: 2px solid white;
 }
 

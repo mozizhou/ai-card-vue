@@ -5,8 +5,10 @@ import DirectChatInfo from '@/views/direct-chat/info/index.vue';
 import Boxing from '@/views/boxing/index.vue';
 import HotelCard from '@/views/hotel-card/index.vue';
 import Links from '@/views/links/index.vue';
+import Login from '@/views/login/index.vue';
 
 const routes = [
+    { path: '/login', component: Login },
     { path: '/direct-chat', component: DirectChat },
     { path: '/direct-chat/info', component: DirectChatInfo },
     { path: '/direct-chat/:id', component: DirectChat },

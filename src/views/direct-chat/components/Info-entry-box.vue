@@ -742,4 +742,28 @@ $shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     margin: 0 auto;
   }
 }
+
+/* 在 Info-entry-box.vue 中补充 */
+@media screen and (max-width: 360px) {
+  .info-entry-box {
+    padding: 8px 6px;
+  }
+
+  .navigation,
+  .more_child,
+  .add-btn,
+  .send-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .text_wrap {
+    padding: 8px 12px;
+  }
+
+  .more-options {
+    gap: 8px;
+    padding-left: 38px;
+  }
+}
 </style>
