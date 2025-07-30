@@ -4,12 +4,21 @@
     <BackgroundLayer :background-url="user?.background" />
 
     <!-- 消息列表区域 - 核心滚动容器 -->
-    <MessageListContainer
-        :message-list="messageList"
-        :user="user"
-        :message-container="messageContainer"
-        @toggle-play="handleTogglePlay"
-    />
+      <div
+          class="flex-1 overflow-y-auto p-4 custom-scrollbar"
+          ref="messageContainer"
+          style="scroll-behavior: smooth; padding-right: 8px;"
+      >
+        <div class="space-y-6 pb-24">
+          <MessageItem
+              v-for="(message, index) in messageList"
+              :key="message.id"
+              :message="message"
+              :user="user"
+              @toggle-play="handleTogglePlay(message, index)"
+          />
+        </div>
+      </div>
 
     <!-- 未选择角色提示 -->
     <NoRolePrompt v-if="!user" />
@@ -37,12 +46,12 @@ import { useAudioPlayer } from '@/views/direct-chat/api/useAudioPlayer';
 
 // 组件导入
 import BackgroundLayer from '@/views/direct-chat/components/BackgroundLayer.vue';
-import MessageListContainer from '@/views/direct-chat/components/MessageListContainer.vue';
 import NoRolePrompt from '@/views/direct-chat/components/NoRolePrompt.vue';
 
 // 类型定义
 import type { Message, User } from '@/types';
 import InfoEntryBox from "@/views/direct-chat/components/Info-entry-box.vue";
+import MessageItem from "@/views/direct-chat/components/MessageItem.vue";
 
 // Props 定义
 interface ChatInterfaceProps {
@@ -72,14 +81,29 @@ const { togglePlay } = useAudioPlayer(audio, messageList);
 
 // 优化滚动到底部的实现
 const scrollToBottom = () => {
+  // 使用 nextTick 确保 DOM 已完全更新
   nextTick(() => {
+    console.log(messageContainer.value)
     if (messageContainer.value) {
-      const currentScrollTop = messageContainer.value.scrollTop;
-      const targetScrollTop = messageContainer.value.scrollHeight - messageContainer.value.clientHeight;
+      const container = messageContainer.value;
 
-      if (Math.abs(currentScrollTop - targetScrollTop) > 1) {
-        messageContainer.value.scrollTop = targetScrollTop;
-      }
+      // 强制回流以确保获取最新的滚动高度
+      container.offsetHeight;
+
+      const targetScrollTop = container.scrollHeight - container.clientHeight;
+
+      // 平滑滚动到底部
+      container.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+      });
+
+      // 处理可能的精度问题，确保完全滚动到底部
+      setTimeout(() => {
+        if (Math.abs(container.scrollTop - targetScrollTop) > 1) {
+          container.scrollTop = targetScrollTop;
+        }
+      }, 100);
     }
   });
 };
