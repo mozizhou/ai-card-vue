@@ -2,8 +2,7 @@
   <div class="w-screen h-screen relative">
     <!-- 使用原生img标签替代Next.js的Image组件 -->
     <img
-        src="/static-image.png"
-        alt="拳击图片"
+        src="/boxing.png"
         class="absolute inset-0 w-full h-full"
         style="object-fit: fill"
     />

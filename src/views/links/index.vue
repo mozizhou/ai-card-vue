@@ -42,7 +42,7 @@
                     :class="`${link.color} transition-all duration-300 transform group-hover:scale-105`"
                 >
                   访问页面
-                  <i class="fa fa-arrow-right ml-1"></i>
+
                 </a-button>
               </router-link>
             </div>

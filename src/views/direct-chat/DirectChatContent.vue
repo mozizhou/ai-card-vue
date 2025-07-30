@@ -4,7 +4,7 @@
     <template v-if="characterId === '7'">
       <div class="w-screen h-screen">
         <iframe
-            src="src/index/index.html"
+            src="/index/index.html"
             class="w-full h-full border-0"
             title="静态页面"
         />
